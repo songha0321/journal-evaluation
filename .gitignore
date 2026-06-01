@@ -1,0 +1,16 @@
+*.xlsx
+.env
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+.wrangler/
+.dev.vars
+
+# macOS
+.DS_Store
+
+# Generated SQL load files contain student PII — never commit
+out/
+
+.claude/settings.local.json
