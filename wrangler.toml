@@ -1,6 +1,14 @@
 name = "sdij-journal"
+main = ".open-next/worker.js"
 compatibility_date = "2026-05-29"
+compatibility_flags = ["nodejs_compat"]
 
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# D1 binding — shared with the Python ETL (`npx wrangler d1 execute DB ...`).
+# Do not change the binding name / database_id.
 [[d1_databases]]
 binding = "DB"
 database_name = "sdij-journal"

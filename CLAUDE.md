@@ -148,7 +148,7 @@ Notes:
 
 * ID pattern is **prefixed hex**: `author_<16-char hex>`. Not UUID. All entities follow the same `prefix_hex` convention — preserve it.
 * Author-level evaluation lives in the separate `evaluations` table, **not** as columns here. `ai_evaluation_grade` / `manual_rating` are summary labels only.
-* No scholarship columns on `authors` — see `evaluations.scholarship_amount`.
+* **Scholarship (용역비) lives on `authors.scholarship_amount`** (INTEGER 원, NOT NULL DEFAULT 0) as of migration 0006 — moved here by product decision because 장학금 is a student-level attribute, not a per-review one. (Earlier convention kept it on `evaluations`; that column is being retired.)
 * `student_type` distinguishes the admission track and **also tells you which source sheet the row came from** (one Google Form per track). New track values must be added to the CHECK first (see migration 0004 pattern).
 
 ---
@@ -284,7 +284,7 @@ created_at          TEXT
 
 The 독창성 ↔ authenticity vs narrative mapping is ambiguous — **ask before running a bulk load.** Don't silently pick.
 
-Scholarship lives on `evaluations.scholarship_amount` (integer 원). Past convention: 1명 50만원 / 5명 20만원 / 14명 10만원. Keep amount/rank editable, not hardcoded.
+Scholarship (용역비) moved to **`authors.scholarship_amount`** (migration 0006); `evaluations.scholarship_amount` is deprecated/being dropped. Read/write 장학금 on `authors`. (Historical: it used to live here; the 2026-06-06 dedup of 8·9기 dual-review rows + the move to authors fixed double-counting in SUM.) Amount is per-student 실지급액 (원); keep editable, not hardcoded.
 
 ---
 

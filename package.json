@@ -1,10 +1,16 @@
 {
   "name": "journal-evaluation",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "항해일지 AX 관리 시스템 (시대인재J)",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
   },
   "repository": {
     "type": "git",
@@ -13,15 +19,23 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/songha0321/journal-evaluation/issues"
   },
   "homepage": "https://github.com/songha0321/journal-evaluation#readme",
-  "devDependencies": {
-    "wrangler": "^4.95.0"
-  },
   "dependencies": {
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250129.0",
+    "@opennextjs/cloudflare": "^1.0.0",
+    "@types/node": "^22.10.7",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "typescript": "^5.7.3",
+    "wrangler": "^4.95.0"
   }
 }

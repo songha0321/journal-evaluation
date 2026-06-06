@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """추출된 용역비(/tmp/fees.json)를 D1 authors와 매칭해 적용 SQL 생성.
 
-저장 위치: evaluations.scholarship_amount (사용자 결정).
- - 6/7/8/9기: 기존 평가행(들) UPDATE — 학생의 모든 평가행에 동일 금액(8·9기 2행 포함).
- - 5기: 평가행이 없으므로 manual 평가행 신규 INSERT (등급 메모 + 용역비).
- - 6기: 자료 없음 → 건드리지 않음.
+저장 위치: authors.scholarship_amount (migration 0006 이후 장학금은 author 단위).
+ - 매칭된 author 행을 UPDATE. 6기는 자료 없음 → 미생성.
+ - 동명이인(D1 중복 author=같은 사람)은 전화로 구분, 불가 시 전 후보 적용 + 경고.
 
-이름(+전화) 정규화 매칭. 같은 코호트 동명이인은 전화로 구분, 불가 시 경고/스킵.
+이름(+전화) 정규화 매칭.
 출력: out/load_service_fee.sql  (검토 후 wrangler --file 로 적용)
 """
 import json, re, sys, unicodedata
@@ -37,9 +36,8 @@ for f in fees:
     if k not in best or f["amount"] > best[k]["amount"]:
         best[k] = f
 
-L = ["-- load_service_fee.sql : 최종 용역비 -> evaluations.scholarship_amount",
-     "PRAGMA foreign_keys = ON;"]
-matched = skipped = upd = ins = 0
+L = ["-- load_service_fee.sql : 최종 용역비 -> authors.scholarship_amount"]
+matched = skipped = upd = 0
 warns = []
 for (coh, name), f in sorted(best.items()):
     cands = idx.get((coh, name), [])
@@ -55,19 +53,10 @@ for (coh, name), f in sorted(best.items()):
             warns.append(f"DUP cohort{coh} {name} x{len(cands)} (phone 불충분) — 전 후보 적용")
     amt = int(f["amount"]); matched += 1
     for c in cands:
-        aid = c["id"]
-        if coh == 5:
-            grade = f.get("src", "").split(":", 1)[-1]
-            L.append(
-                "INSERT INTO evaluations (author_id, evaluator_type, evaluation_summary, scholarship_amount) "
-                f"SELECT '{aid}','manual','용역비 등급 {esc(grade)}',{amt} "
-                f"WHERE NOT EXISTS (SELECT 1 FROM evaluations WHERE author_id='{aid}');")
-            ins += 1
-        else:
-            L.append(f"UPDATE evaluations SET scholarship_amount={amt} WHERE author_id='{aid}';")
-            upd += 1
+        L.append(f"UPDATE authors SET scholarship_amount={amt} WHERE id='{c['id']}';")
+        upd += 1
 
 open("out/load_service_fee.sql", "w", encoding="utf-8").write("\n".join(L) + "\n")
-print(f"매칭 {matched} | UPDATE문(6/7/8/9 author) {upd} | 5기 INSERT {ins} | 스킵(미매칭/모호) {skipped}")
+print(f"매칭 {matched} | UPDATE문(author) {upd} | 스킵(미매칭/모호) {skipped}")
 for w in warns: print("  " + w)
 print(f"wrote out/load_service_fee.sql ({len(L)} stmts)")

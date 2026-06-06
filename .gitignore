@@ -7,10 +7,17 @@ node_modules/
 .wrangler/
 .dev.vars
 
+# Next.js / OpenNext build output
+.next/
+.open-next/
+next-env.d.ts
+*.tsbuildinfo
+
 # macOS
 .DS_Store
 
-# Generated SQL load files contain student PII — never commit
+# Generated SQL load files / DB exports contain student PII — never commit
 out/
+backups/
 
 .claude/settings.local.json
