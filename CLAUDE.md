@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Batch evaluator for 시대인재 `<항해일지>` 9기 수기집. Each row of an Excel sheet is a Korean student admissions journal; an LLM scores it on 4 rubric criteria (정성·구체성 / 실용성 / 독창성 / 가독성), assigns a final 0–5 score, a selection flag, an AI-authorship suspicion score, and a one-line comment. Results are written back into the same workbook.
+Batch evaluator for 시대인재 `<항해일지>` 9기 수기집. Each row of an Excel sheet is a Korean student admissions journal; an LLM scores it on 4 rubric criteria (정성·구체성 / 실용성 / 독창성 / 가독성), assigns a final 0–5 score (weighted mean), a 3-tier selection state (선별/예비/제외), an AI-authorship suspicion score, a reliability risk flag (없음/주의/높음), and a one-line comment. Results are written back into the same workbook.
+
+**The canonical rubric/criteria doc is [`EVALUATION.md`](./EVALUATION.md)** — scoring scale, weights, selection thresholds, reliability check, and output schema all live there. The two scripts follow it; when they disagree, EVALUATION.md wins.
 
 Two interchangeable backends live side-by-side:
 - `evaluate.py` — Anthropic (`claude-sonnet-4-6`), uses prompt caching on the system prompt.
@@ -37,13 +39,13 @@ No test suite, no linter config. Dependencies are implicit: `anthropic`, `openai
 
 ## Excel layout (hard-coded, 1-based)
 
-Sheet name `수기정리`. Inputs read from columns 1, 2, 3, 4, 5, 8 (name, apply_type, university, item, char_count, body). Outputs written to 14, 15, 16, 17 (final_score, selected O/X, AI_usage, one_line). If the spreadsheet layout shifts, update `COL_*` constants in both scripts.
+Sheet name `수기정리`. Inputs read from columns 1, 2, 3, 4, 5, 8 (name, apply_type, university, item, char_count, body). Outputs written to 14, 15, 16, 17, 18 (final_score, selection_state 선별/예비/제외, AI_usage, one_line, reliability_risk 없음/주의/높음). Column 15 is a status string (not O/X), and column 18 is new — confirm it is free in the target workbook and add a header. If the spreadsheet layout shifts, update `COL_*` constants in both scripts.
 
 ## Conventions worth preserving
 
 - All Korean field names in prompts, JSON keys, and CLI output are intentional — the rubric and downstream consumers expect them.
 - `parse_json_response` tolerates code fences and surrounding text; do not tighten it to strict JSON unless you also relax the model's freedom.
-- The final score is recomputed from the four sub-scores as a rounded mean, then **overwritten by the model's `최종_점수` if it returned one** (the model is trusted to apply weighting beyond a plain average — criterion 1 is marked `weight="최우선"`).
+- The final score is recomputed from the four sub-scores as a **rounded weighted mean** (`WEIGHTS`: 정성·구체성 0.4, the other three 0.2 each), then **overwritten by the model's `최종_점수` if it returned one** (criterion 1 is marked `weight="최우선"`). Selection state is derived from the final score via `selection_status()` (≥4 선별 / 3 예비 / ≤2 제외), overridable by the model's `선별_상태`.
 - `.xlsx` files are gitignored; the evaluated workbook is the artifact, not a committed result.
 
 # CLAUDE.md

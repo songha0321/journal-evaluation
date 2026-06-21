@@ -1,6 +1,6 @@
 """
 9기 수기집 <항해일지> 평가 스크립트 (OpenAI 버전)
-- 각 수기를 OpenAI API로 평가하여 4가지 지표 점수(0~5), 최종 점수, 선별 여부, AI 사용도, 한 줄 평을 산출
+- 각 수기를 OpenAI API로 평가하여 4가지 지표 점수(0~5), 최종 점수(가중평균), 선별 상태(선별/예비/제외), AI 사용도, 신뢰성 리스크, 한 줄 평을 산출
 - 결과는 '_evaluated.xlsx'로 저장 (resume 지원)
 - OPENAI_API_KEY 환경변수 필요
 """
@@ -30,16 +30,20 @@ COL_ITEM = 4
 COL_CHARS = 5
 COL_BODY = 8
 COL_FINAL_SCORE = 14
-COL_SELECTED = 15
+COL_SELECTED = 15      # 선별 상태: 선별/예비/제외 (EVALUATION.md 기준)
 COL_AI_USAGE = 16
 COL_ONELINE = 17
+COL_TRUST_RISK = 18    # 신뢰성 리스크: 없음/주의/높음 (과장·모순 점검)
+
+# 가중치 (EVALUATION.md B절): 정성·구체성 40%, 나머지 각 20%
+WEIGHTS = {"정성_구체성": 0.4, "실용성_타겟적합성": 0.2, "독창성": 0.2, "가독성": 0.2}
 
 SAVE_EVERY = 20
 MAX_WORKERS = 8
 MAX_RETRIES = 4
 
 SYSTEM_PROMPT = """당신은 대한민국 최상위권 입시 학원 '시대인재'의 공식 수기집 <항해일지> 발간을 담당하는 수석 AI 평가 에이전트입니다.
-입력된 학생의 수기를 면밀히 분석하여 4가지 핵심 평가 지표를 기준으로 각각 0~5점의 정수 점수를 부여하고, 추가로 AI 사용 의심도와 한 줄 평을 작성해 JSON 형태로 반환합니다.
+입력된 학생의 수기를 면밀히 분석하여 4가지 핵심 평가 지표를 기준으로 각각 0~5점의 정수 점수를 부여하고, 추가로 AI 사용 의심도, 신뢰성 리스크(과장·모순), 한 줄 평을 작성해 JSON 형태로 반환합니다.
 
 <evaluation_criteria>
 <criterion id="1" weight="최우선">
@@ -80,6 +84,12 @@ SYSTEM_PROMPT = """당신은 대한민국 최상위권 입시 학원 '시대인�
 0: 활용 불가 — 질문 의도와 무관한 답변, 비속어 포함 등 가치 전무.
 </scoring_scale>
 
+<reliability_check>
+품질 점수와 별개로, 사람이 썼더라도 신뢰성 리스크를 점검한다.
+- 신호: 비현실적 성적 변화(예: "한 달 만에 3등급↑"), 검증 불가능한 단정, 답변 간 사실 불일치, 과도한 일반화.
+- 없음 = 의심 요소 없음 / 주의 = 표현 완화·근거 보강 필요 / 높음 = 점수와 무관하게 사실 확인 전까지 발간 보류.
+</reliability_check>
+
 <output_format>
 오직 아래 JSON 한 객체만 반환합니다. 코드펜스/설명/추가 텍스트 금지.
 {
@@ -87,9 +97,10 @@ SYSTEM_PROMPT = """당신은 대한민국 최상위권 입시 학원 '시대인�
   "실용성_타겟적합성": <int 0-5>,
   "독창성": <int 0-5>,
   "가독성": <int 0-5>,
-  "최종_점수": <int 0-5, 네 지표 산술평균을 반올림한 정수>,
-  "선별_여부": <bool, 최종_점수 >= 4 이면 true>,
+  "최종_점수": <int 0-5, 네 지표 가중평균(정성_구체성 0.4, 실용성_타겟적합성·독창성·가독성 각 0.2)을 반올림한 정수>,
+  "선별_상태": <"선별"|"예비"|"제외". 최종_점수 4 이상이면 "선별", 3이면 "예비", 2 이하면 "제외">,
   "AI_사용도": <int 0-5, 0=확실히 사람이 직접 작성, 5=거의 확실히 AI 생성. 시대인재 강사명/콘텐츠명/구체적 시기 등이 등장하면 사람일 확률이 높음>,
+  "신뢰성_리스크": <"없음"|"주의"|"높음". 위 reliability_check 기준>,
   "한줄평": "<1~2문장의 평가 사유. 강점과 약점을 간결히>"
 }
 </output_format>"""
@@ -133,14 +144,17 @@ def coerce_int(v, lo=0, hi=5) -> int:
     raise ValueError(f"cannot coerce to int: {v!r}")
 
 
-def coerce_bool(v) -> bool:
-    if isinstance(v, bool):
-        return v
-    if isinstance(v, (int, float)):
-        return bool(v)
-    if isinstance(v, str):
-        return v.strip().lower() in ("true", "1", "yes", "y", "t", "o")
-    return False
+SELECTION_STATES = ("선별", "예비", "제외")
+TRUST_RISK_STATES = ("없음", "주의", "높음")
+
+
+def selection_status(score: int) -> str:
+    """최종 점수 → 선별 상태 (EVALUATION.md: 4↑ 선별 / 3 예비 / 2↓ 제외)."""
+    if score >= 4:
+        return "선별"
+    if score == 3:
+        return "예비"
+    return "제외"
 
 
 def evaluate_one(client: OpenAI, row: dict) -> dict:
@@ -168,14 +182,21 @@ def evaluate_one(client: OpenAI, row: dict) -> dict:
                 "AI_사용도": coerce_int(data.get("AI_사용도", 0)),
                 "한줄평": str(data.get("한줄평", "")).strip(),
             }
-            avg = (out["정성_구체성"] + out["실용성_타겟적합성"] + out["독창성"] + out["가독성"]) / 4
-            out["최종_점수"] = max(0, min(5, int(round(avg))))
+            # 가중평균 (EVALUATION.md: 정성 0.4 / 실용·독창·가독 각 0.2)
+            weighted = sum(out[k] * w for k, w in WEIGHTS.items())
+            out["최종_점수"] = max(0, min(5, int(round(weighted))))
+            # 모델의 final 점수가 있으면 그 값을 신뢰 (최우선 가중을 모델이 적용)
             if "최종_점수" in data:
                 try:
                     out["최종_점수"] = coerce_int(data["최종_점수"])
                 except Exception:
                     pass
-            out["선별_여부"] = coerce_bool(data.get("선별_여부", out["최종_점수"] >= 4))
+            # 선별 상태: 모델 값이 유효하면 사용, 아니면 점수에서 도출
+            sel = data.get("선별_상태")
+            out["선별_상태"] = sel if sel in SELECTION_STATES else selection_status(out["최종_점수"])
+            # 신뢰성 리스크 (과장·모순). 유효하지 않으면 보수적으로 "없음"
+            risk = data.get("신뢰성_리스크")
+            out["신뢰성_리스크"] = risk if risk in TRUST_RISK_STATES else "없음"
             out["_usage"] = {
                 "input_tokens": resp.usage.prompt_tokens,
                 "output_tokens": resp.usage.completion_tokens,
@@ -212,9 +233,10 @@ def load_jobs(ws, start_row=2, end_row=None, force=False):
 
 def write_result(ws, row_idx: int, result: dict):
     ws.cell(row_idx, COL_FINAL_SCORE).value = result["최종_점수"]
-    ws.cell(row_idx, COL_SELECTED).value = "O" if result["선별_여부"] else "X"
+    ws.cell(row_idx, COL_SELECTED).value = result["선별_상태"]
     ws.cell(row_idx, COL_AI_USAGE).value = result["AI_사용도"]
     ws.cell(row_idx, COL_ONELINE).value = result["한줄평"]
+    ws.cell(row_idx, COL_TRUST_RISK).value = result["신뢰성_리스크"]
 
 
 def main():
@@ -265,8 +287,8 @@ def main():
                 completed += 1
                 print(
                     f"[{completed}/{len(jobs)}] row={job['row']} {str(job['이름'])[:8]:<8} "
-                    f"score={result['최종_점수']} sel={'O' if result['선별_여부'] else 'X'} "
-                    f"ai={result['AI_사용도']} | {result['한줄평'][:60]}"
+                    f"score={result['최종_점수']} sel={result['선별_상태']} "
+                    f"ai={result['AI_사용도']} risk={result['신뢰성_리스크']} | {result['한줄평'][:60]}"
                 )
                 save_counter += 1
                 if save_counter >= SAVE_EVERY:
