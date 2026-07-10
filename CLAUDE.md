@@ -554,12 +554,12 @@ The cohort-9 data lives in Google Forms exports — one form (and one sheet) per
 ```bash
 # 우선선발 sheet (gid=0 has the canonical tab; default tab is a different one)
 python3 etl_sheet_to_d1.py \
-  --sheet-id 1Tra3_vaYocMM-7OJXMM4vrBTtEeCQxrUET1y4eIlV-g --gid 0 \
+  --sheet-id 18x1IccHWOxymBPoK4ISqGlqJq13Yh69HUim6RwsDPhc --gid 0 \
   --student-type 우선선발 --out out/load_priority.sql
 
 # 성적우수 sheet
 python3 etl_sheet_to_d1.py \
-  --sheet-id 1i_ivPMlik2kirejT3ORjyHn5Gc8aoR_4v0hBU3b63R0 \
+  --sheet-id 17F06ElPfpLCPfprt3HcQPTv4fvpI1ttVBb1vUqNR1wc \
   --student-type 성적우수 --out out/load_sjus.sql
 
 npx wrangler d1 execute DB --remote --file out/load_<name>.sql
@@ -582,8 +582,8 @@ How it handles cross-sheet drift (the two forms differ in column count, order, a
 | `1oSpcV-TSNXWySBjBflXKP0tnxbapP-9wJU2j1eFLz4c` | default | 7 | 성적우수 | 102 | 7기 single-reviewer form (20 Q) | `etl_sheet_to_d1.py` |
 | `1otAR9jLZDUMW9FiSimuAPd9eewRQxZ7voDZsWgdXQic` | default | 8 | 성적향상 | 24 | 8기 short form (17 Q) | `etl_sheet_to_d1.py` |
 | `1vElhfl-Bc0XBH4Z3XtJINe4_2qdwCzEJ4GQ2poCfLjg` | default | 8 | 성적우수 | 45 | 8기 long form (44 Q) | `etl_sheet_to_d1.py` |
-| `1Tra3_vaYocMM-7OJXMM4vrBTtEeCQxrUET1y4eIlV-g` | `gid=0` | 9 | 우선선발 | 33 | 9기 long form (41 Q) — shared with 9기 성적우수 | `etl_sheet_to_d1.py` |
-| `1i_ivPMlik2kirejT3ORjyHn5Gc8aoR_4v0hBU3b63R0` | default | 9 | 성적우수 | 59 | 9기 long form (41 Q) | `etl_sheet_to_d1.py` |
+| `18x1IccHWOxymBPoK4ISqGlqJq13Yh69HUim6RwsDPhc` | `gid=0` | 9 | 우선선발 | 33 | 9기 long form (41 Q) — shared with 9기 성적우수 | `etl_sheet_to_d1.py` |
+| `17F06ElPfpLCPfprt3HcQPTv4fvpI1ttVBb1vUqNR1wc` | default | 9 | 성적우수 | 59 | 9기 long form (41 Q) | `etl_sheet_to_d1.py` |
 
 6기는 의도적으로 건너뜀 (loaded order: 5, 7, 8, 9).
 
