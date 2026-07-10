@@ -584,8 +584,12 @@ How it handles cross-sheet drift (the two forms differ in column count, order, a
 | `1vElhfl-Bc0XBH4Z3XtJINe4_2qdwCzEJ4GQ2poCfLjg` | default | 8 | 성적우수 | 45 | 8기 long form (44 Q) | `etl_sheet_to_d1.py` |
 | `18x1IccHWOxymBPoK4ISqGlqJq13Yh69HUim6RwsDPhc` | `gid=0` | 9 | 우선선발 | 33 | 9기 long form (41 Q) — shared with 9기 성적우수 | `etl_sheet_to_d1.py` |
 | `17F06ElPfpLCPfprt3HcQPTv4fvpI1ttVBb1vUqNR1wc` | default | 9 | 성적우수 | 59 | 9기 long form (41 Q) | `etl_sheet_to_d1.py` |
+| `1rmEVGPnBkaE3zOD8700kW12SxOAuLmu4xLCIMOuy3vQ` | `재종RAW` | 9 | 성적향상 | 19 | 9기 재종 long form (43 Q), 사람 평가 없음 → AI 평가 | `etl_sugi_ai_eval.py` |
+| `1rmEVGPnBkaE3zOD8700kW12SxOAuLmu4xLCIMOuy3vQ` | `기숙RAW` | 9 | 성적향상 | 4 | 9기 기숙 long form (44 Q, 관 없음/[7-6] 추가) | `etl_sugi_ai_eval.py` |
 
-6기는 의도적으로 건너뜀 (loaded order: 5, 7, 8, 9).
+6기는 의도적으로 건너뜀 (loaded order: 5, 7, 8, 9). 9기 성적향상은 재종+기숙 = 23명 (마지막 적재).
+
+**9기 성적향상 — AI 평가 경로 (`etl_sugi_ai_eval.py`)**: 다른 기수/전형은 시트에 사람 평가(`수기평1/2`)가 있어 `etl_sheet_to_d1.py`가 `evaluator_type='manual'`(total만)로 적재한다. 9기 성적향상은 사람 평가가 없어, Claude가 EVALUATION.md 기준으로 평가한 결과(`out/sugi_evals.json`류)를 받아 `evaluator_type='ai'` + 4개 세부점수 + AI 의심도까지 적재한다. 원본 두 탭은 이름 기반 gviz CSV(`gviz/tq?tqx=out:csv&sheet=<name>`, gid 불필요)로 읽으며, 소스 시트는 익명 export가 막혀 있어 **링크공유 '뷰어'** 상태여야 한다. 세부점수 매핑·스케일(sub=5점×2, total=5점×20)은 스크립트 docstring 참고. 평가 감사본은 이 시트의 `for claude` 탭(gid=0)에 있다.
 
 There is no single "form per cohort." 8기 alone ran two different forms — short for 성적향상, long for 성적우수. 7기 used a third form with **only one reviewer column** (`수기평` / `평가자` / `비고` — all singular). 9기 collapsed back to a single shared form. `questions` rows are scoped per `(cohort, form variant)` in practice; even within one cohort, two different forms produce disjoint question rows. Cross-cohort or cross-form comparison must use `question_key` (e.g. `'3-1'`), not `question_text` or `id`.
 
