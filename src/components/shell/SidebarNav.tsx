@@ -4,7 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { section: "제작" },
+  { section: "AX 원고 제작" },
+  { href: "/ax", label: "AX 홈", ico: "⛵" },
+  { href: "/ax/select", label: "수기 선별", ico: "☑" },
+  { section: "데이터" },
   { href: "/dashboard", label: "대시보드", ico: "▦" },
   { href: "/essays", label: "수기 DB", ico: "✎" },
   { href: "/evaluations", label: "평가 · 선별", ico: "★" },
