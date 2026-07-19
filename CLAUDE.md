@@ -582,6 +582,7 @@ How it handles cross-sheet drift (the two forms differ in column count, order, a
 | `1oSpcV-TSNXWySBjBflXKP0tnxbapP-9wJU2j1eFLz4c` | default | 7 | 성적우수 | 102 | 7기 single-reviewer form (20 Q) | `etl_sheet_to_d1.py` |
 | `1otAR9jLZDUMW9FiSimuAPd9eewRQxZ7voDZsWgdXQic` | default | 8 | 성적향상 | 24 | 8기 short form (17 Q) | `etl_sheet_to_d1.py` |
 | `1vElhfl-Bc0XBH4Z3XtJINe4_2qdwCzEJ4GQ2poCfLjg` | default | 8 | 성적우수 | 45 | 8기 long form (44 Q) | `etl_sheet_to_d1.py` |
+| `1413Y5B6GiyE_hVNa8vDcse4uNP1a3NSYNjfmgMY9BJA` | default | 8 | 우선선발 | 75 | 8기 우선선발 long form (42 Q) — added 2026-07-19 (was missed) | `etl_sheet_to_d1.py --cohort 8` |
 | `18x1IccHWOxymBPoK4ISqGlqJq13Yh69HUim6RwsDPhc` | `gid=0` | 9 | 우선선발 | 33 | 9기 long form (41 Q) — shared with 9기 성적우수 | `etl_sheet_to_d1.py` |
 | `17F06ElPfpLCPfprt3HcQPTv4fvpI1ttVBb1vUqNR1wc` | default | 9 | 성적우수 | 59 | 9기 long form (41 Q) | `etl_sheet_to_d1.py` |
 | `1rmEVGPnBkaE3zOD8700kW12SxOAuLmu4xLCIMOuy3vQ` | `재종RAW` | 9 | 성적향상 | 19 | 9기 재종 long form (43 Q), 사람 평가 없음 → AI 평가 | `etl_sugi_ai_eval.py` |
@@ -595,6 +596,8 @@ There is no single "form per cohort." 8기 alone ran two different forms — sho
 
 **Form-variant handling in `etl_sheet_to_d1.py`**:
 
+* **Space-insensitive `find_col`** (added 2026-07-19): internal spaces are squashed on both header and needle before comparing. The 8기 우선선발 form spells reviewer/score headers *with* a space (`수기평 2` / `평가자 1`) where 9기 uses none (`수기평2` / `평가자1`); one needle spelling now matches both. Only structural column lookup is affected — stored `question_text` still uses the raw `norm()` (spaces preserved), so cross-sheet question dedup is unchanged.
+* **8기 우선선발 column order is inverted**: scores come *before* reviewer names (`수기평 1` / `수기평 2` / `평가자 1` / `평가자 2`), whereas 8기/9기 put reviewer-name columns immediately before the scores. The positional reviewer fallback (`score_1 - 2`) would land out of range here, but with space-insensitive matching the `평가자1`/`평가자2` needles hit directly, so the fallback never fires. It also carries a single shared `비고` column (not per-reviewer) — mapped to reviewer_1's eval via the bare `비고` needle in the two-reviewer branch, so notes on rows only reviewer 송 scored land as a NULL-score, NULL-evidence note row.
 * **Single vs. multi-reviewer**: the script branches on `score_2` presence. If only one score column exists (7기 pattern: `수기평` / `평가자`), it skips reviewer_2 entirely and uses lax needle matching for reviewer_1 (no second-reviewer column to confuse).
 * **Reviewer-header overwriting**: when both score columns exist but reviewer headers are missing or relabeled (e.g. 8기 성적우수's col 0 = "거센 파도를 지나며" book title), reviewer columns are inferred as the two slots immediately before score_1.
 * **Substring vs. exact match**: column names like `관` and `반` need `exact=True` in `find_col` because 7기 has nearby `관반` and `반수반?` columns that would otherwise greedy-match as substrings. The longer/section-title style needles (e.g. `재원 기수`, `비고_평가자1`) stay on substring matching.
@@ -611,7 +614,8 @@ There is no single "form per cohort." 8기 alone ran two different forms — sho
 **`final_university` policy** — graduated cohorts treat the sheet as authoritative, current cohorts treat the admin as authoritative:
 
 * 5기 / 7기 sheets carry a `최종 진학 대학` / `최종대학` column. Both INSERT and UPDATE write the sheet value into `authors.final_university`, but the UPDATE clause uses `COALESCE(NULLIF(<sheet>, ''), final_university)` so an empty sheet cell never clobbers a value an admin already entered.
-* 8기 / 9기 sheets do not have a 최종대학 column at all. The cell lookup returns empty, the COALESCE preserves whatever's in D1, and admins keep control.
+* 8기 성적향상/성적우수 and 9기 sheets do not have a 최종대학 column at all. The cell lookup returns empty, the COALESCE preserves whatever's in D1, and admins keep control.
+* **Exception: 8기 우선선발** carries a `최종대학` column, so its INSERT seeds `authors.final_university` from the sheet, like 5기/7기. But 54/75 cells were the Sheets formula-error literal `#N/A` (only 19 real values: 서울대 의예 ×16, (지균) ×3); `cell()` now filters `SHEET_ERROR_VALUES` to empty so they never persist (the already-loaded #N/A were UPDATEd to NULL afterward). UPDATE still uses `COALESCE(NULLIF(...))`, so an empty cell never clobbers an admin edit.
 * Other genuinely admin-only columns (`memo`, `manual_rating`, `ai_evaluation_grade`, `admission_score`) are still left untouched on UPDATE — those have no sheet counterpart.
 
 ### 5기 form is its own thing (`etl_5gi.py`)

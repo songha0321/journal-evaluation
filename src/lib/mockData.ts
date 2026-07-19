@@ -10,10 +10,10 @@ import type { EvaluationRow } from "@/lib/queries/evaluations";
 import type { ArticleListRow } from "@/lib/queries/articles";
 
 export const mockTotals: Totals = {
-  authors: 429,
-  submissions: 442,
-  qna: 10913,
-  evaluations: 564,
+  authors: 504,
+  submissions: 517,
+  qna: 14061,
+  evaluations: 637,
   articles: 0,
 };
 
@@ -21,14 +21,14 @@ export const mockCohortCounts: CohortCount[] = [
   { cohort: 5, authors: 88, qna: 1438, evaluations: 65 },
   { cohort: 6, authors: 81, qna: 1446, evaluations: 81 },
   { cohort: 7, authors: 99, qna: 1974, evaluations: 99 },
-  { cohort: 8, authors: 69, qna: 2343, evaluations: 137 },
+  { cohort: 8, authors: 144, qna: 5491, evaluations: 210 },
   { cohort: 9, authors: 92, qna: 3712, evaluations: 182 },
 ];
 
 export const mockCohortFees: CohortFee[] = [
   { cohort: 5, total_fee: 11700000, fee_authors: 65 },
   { cohort: 7, total_fee: 13300000, fee_authors: 84 },
-  { cohort: 8, total_fee: 8570000, fee_authors: 67 },
+  { cohort: 8, total_fee: 28170000, fee_authors: 140 },
   { cohort: 9, total_fee: 17790000, fee_authors: 86 },
 ];
 

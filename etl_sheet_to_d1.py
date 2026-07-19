@@ -35,6 +35,10 @@ from pathlib import Path
 
 ALLOWED_STUDENT_TYPES = {"성적우수", "성적향상", "포레스트", "우선선발"}
 DRIVE_URL_RE = re.compile(r"https?://(?:drive|docs)\.google\.com/")
+# Google Sheets formula-error literals — always junk when they fill a whole cell.
+SHEET_ERROR_VALUES = frozenset({
+    "#N/A", "#REF!", "#VALUE!", "#DIV/0!", "#NAME?", "#NULL!", "#NUM!", "#ERROR!", "#GETTING_DATA",
+})
 QUESTION_KEY_RE = re.compile(r"^\[(\d+-\d+)\]")
 NAME_TRAILING_PARENS = re.compile(r"\s*\([^)]*\)\s*$")
 NAME_TRAILING_LATIN  = re.compile(r"[A-Za-z]+$")
@@ -107,10 +111,20 @@ def find_col(headers_norm: list[str], *needles: str, optional: bool = False, exa
     With ``exact=True`` the header must equal the needle exactly. Use this for
     short names like '관' / '반' that would otherwise match unrelated headers
     such as '관반' or '반수반?' as substrings.
+
+    Matching is space-insensitive: internal spaces are squashed on both sides
+    before comparing. Forms differ in whether reviewer/score headers carry a
+    space ('수기평 2' / '평가자 1' in 8기 우선선발 vs '수기평2' / '평가자1' in 9기),
+    and this keeps one needle spelling working across all of them. Only affects
+    structural column lookup — stored question_text still uses the raw norm().
     """
+    def squash(s: str) -> str:
+        return s.replace(" ", "")
     for i, h in enumerate(headers_norm):
+        hs = squash(h)
         for n in needles:
-            if (h == n) if exact else (n in h):
+            ns = squash(n)
+            if (hs == ns) if exact else (ns in hs):
                 return i
     if optional:
         return None
@@ -287,7 +301,9 @@ def main():
         reviewer_2 = find_col(headers_norm, "평가자2", optional=True)
         if reviewer_2 is None and score_1 - 1 >= 0:
             reviewer_2 = score_1 - 1
-        note_1 = find_col(headers_norm, "비고_평가자1", "비고 평가자1", "비고1", optional=True)
+        # Per-reviewer note first; bare "비고" is the 8기 우선선발 spelling — a single
+        # shared note column (no per-reviewer split), mapped to reviewer_1's eval.
+        note_1 = find_col(headers_norm, "비고_평가자1", "비고 평가자1", "비고1", "비고", optional=True)
         note_2 = find_col(headers_norm, "비고_평가자2", "비고 평가자2", "비고2", optional=True)
 
     col = {
@@ -362,7 +378,12 @@ def main():
             i = col.get(key)
             if i is None or i >= len(r):
                 return default
-            return r[i].strip() if r[i] is not None else default
+            v = r[i].strip() if r[i] is not None else default
+            # Sheets formula errors (8기 우선선발 최종대학 is #N/A for 54/75 rows) are junk,
+            # not data — never persist them. Whole-cell match only.
+            if v in SHEET_ERROR_VALUES:
+                return default
+            return v
 
         name = normalize_name(cell("name"))
         if not name:
