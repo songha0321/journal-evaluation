@@ -2,31 +2,51 @@
    원격 @import는 빌드/렌더를 막을 수 있어 사용하지 않는다(폰트 로딩은 별도 link로 처리 가능). */
 
 :root {
-  /* Notion형 실무 admin: 차분한 중립 팔레트 + 좁은 여백 */
-  --bg: #ffffff;
-  --bg-subtle: #f7f7f5;
-  --bg-hover: #efefed;
-  --border: #e8e8e6;
-  --border-strong: #d8d8d4;
-  --text: #1f1f1d;
-  --text-muted: #6b6b66;
-  --text-faint: #9a9a93;
-  --accent: #2f6df6;
-  --accent-bg: #eaf1fe;
-  --sidebar-bg: #fbfbfa;
+  /* 시대인재 Design System — Application Surface (관리자 콘솔): 차콜 크롬 + 코랄 액션 */
+  /* Neutral scale */
+  --bg: #ffffff; /* neutral-0 */
+  --bg-subtle: #f5f5f5; /* neutral-50 */
+  --bg-hover: #ededed; /* neutral-100 */
+  --border: #e0e0e0; /* neutral-200 */
+  --border-strong: #cacaca; /* neutral-300 */
+  --text: #141414; /* neutral-900 (text/primary) */
+  --text-muted: #5e5e5e; /* neutral-600 */
+  --text-faint: #808080; /* neutral-500 */
+  --section-header: #f2f3f5; /* console/section */
 
-  --green: #1f9d57;
-  --green-bg: #e7f6ee;
-  --amber: #b7791f;
-  --amber-bg: #fdf3e2;
-  --red: #d4503e;
-  --red-bg: #fbecea;
-  --gray: #6b6b66;
-  --gray-bg: #efefed;
+  /* Brand & action */
+  --brand-blue: #0077c1; /* brand/blue — link, focus */
+  --brand-blue-bg: #eaf4fb;
+  --coral: #fc5163; /* accent/coral — primary action */
+  --coral-hover: #e63e54;
+  --coral-pressed: #c9344a;
+  --indigo: #544e8c; /* accent/indigo — tertiary */
+  --chrome: #32373d; /* console/chrome — sidebar/header */
 
-  --radius: 6px;
+  /* action/primary = coral; link = brand blue */
+  --accent: #fc5163;
+  --accent-bg: #fee9ec;
+  --link: #0077c1;
+  --sidebar-bg: #32373d;
+
+  /* Status */
+  --green: #1f9d3d;
+  --green-bg: #e8f6ec;
+  --amber: #f39a0c;
+  --amber-bg: #fdf1dc;
+  --red: #e5343b;
+  --red-bg: #fce9e9;
+  --gray: #5e5e5e;
+  --gray-bg: #ededed;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 8px; /* radius-md: 버튼·카드·패널 */
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --sidebar-w: 232px;
-  --font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui,
+  --font: "Pretendard", "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui,
     "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
 }
 
@@ -60,7 +80,7 @@ a {
   width: var(--sidebar-w);
   flex-shrink: 0;
   background: var(--sidebar-bg);
-  border-right: 1px solid var(--border);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   padding: 16px 10px;
   position: sticky;
   top: 0;
@@ -71,19 +91,19 @@ a {
   font-weight: 700;
   font-size: 15px;
   padding: 6px 10px 14px;
-  color: var(--text);
+  color: #ffffff;
 }
 .sidebar-brand small {
   display: block;
   font-weight: 500;
   font-size: 12px;
-  color: var(--text-faint);
+  color: #a6a6a6;
   margin-top: 2px;
 }
 .nav-section {
   font-size: 11px;
   font-weight: 600;
-  color: var(--text-faint);
+  color: #808080;
   padding: 14px 10px 4px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -93,18 +113,18 @@ a {
   align-items: center;
   gap: 8px;
   padding: 7px 10px;
-  border-radius: var(--radius);
-  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  color: #cacaca;
   font-weight: 500;
   cursor: pointer;
 }
 .nav-item:hover {
-  background: var(--bg-hover);
-  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
 }
 .nav-item.active {
-  background: var(--accent-bg);
-  color: var(--accent);
+  background: var(--coral);
+  color: #ffffff;
 }
 .nav-item .ico {
   width: 16px;
@@ -114,7 +134,8 @@ a {
   margin-top: auto;
   padding: 10px;
   font-size: 12px;
-  color: var(--text-faint);
+  color: #808080;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .main {
@@ -207,46 +228,52 @@ a {
 .input:focus,
 .select:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px rgba(0, 119, 193, 0.15);
 }
 .table-wrap {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: auto;
 }
-table.data {
+.table-wrap table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
-table.data th {
+.table-wrap table th {
   text-align: left;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-muted);
-  background: var(--bg-subtle);
+  background: var(--section-header);
   padding: 9px 12px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   position: sticky;
   top: 0;
 }
-table.data td {
+.table-wrap table td {
   padding: 9px 12px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
-table.data tr:last-child td {
+.table-wrap table tr:last-child td {
   border-bottom: none;
 }
-table.data tbody tr:hover {
+.table-wrap table tbody tr:hover {
   background: var(--bg-subtle);
 }
-table.data td.num {
+.table-wrap table td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 .row-link {
   cursor: pointer;
+  color: var(--link);
+  font-weight: 500;
+}
+.row-link:hover {
+  text-decoration: underline;
 }
 
 /* ---- badges ---- */
@@ -283,8 +310,8 @@ table.data td.num {
   gap: 6px;
 }
 .btn:hover { background: var(--bg-hover); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn.primary:hover { filter: brightness(0.95); }
+.btn.primary { background: var(--coral); border-color: var(--coral); color: #fff; }
+.btn.primary:hover { background: var(--coral-hover); border-color: var(--coral-hover); }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .empty {
@@ -316,7 +343,7 @@ table.data td.num {
 .qna-item { padding: 14px 0; border-bottom: 1px solid var(--border); }
 .qna-item:last-child { border-bottom: none; }
 .qna-q { font-weight: 600; margin-bottom: 6px; }
-.qna-q .cat { font-size: 11px; color: var(--accent); margin-right: 6px; }
+.qna-q .cat { font-size: 11px; color: var(--link); margin-right: 6px; }
 .qna-a { color: var(--text); white-space: pre-wrap; line-height: 1.7; }
 .qna-a.empty-ans { color: var(--text-faint); font-style: italic; }
 
