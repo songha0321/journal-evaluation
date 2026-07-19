@@ -6,12 +6,17 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
  * 키/모델은 env로 주입: OPENAI_API_KEY, (선택) OPENAI_MODEL, OPENAI_BASE_URL.
  */
 async function getEnv(): Promise<Record<string, string | undefined>> {
+  // OpenNext는 시크릿을 getCloudflareContext().env 또는 process.env 어느 쪽에 둘 수 있어 병합한다.
+  const merged: Record<string, string | undefined> = {
+    ...(process.env as Record<string, string | undefined>),
+  };
   try {
     const { env } = await getCloudflareContext({ async: true });
-    return env as unknown as Record<string, string | undefined>;
+    Object.assign(merged, env as unknown as Record<string, string | undefined>);
   } catch {
-    return process.env as Record<string, string | undefined>;
+    /* dev/mock: process.env만 사용 */
   }
+  return merged;
 }
 
 export async function aiEnabled(): Promise<boolean> {
