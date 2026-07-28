@@ -1,31 +1,29 @@
 import { NextResponse } from "next/server";
-import { assembleOriginal } from "@/lib/ax";
-import { queryOne } from "@/lib/db";
+import { getManuscript } from "@/lib/ax";
 import { reviseText, makeComment, makeSubtitle, aiEnabled } from "@/lib/ai";
 
-// AI 생성: 탈고 / comment / 소제목. authorId로 원문을 조립해 처리.
+/**
+ * AI 생성: 탈고 / comment / 소제목.
+ * 원문은 확정된 qna 행의 answer_text 하나다(작성자의 답변 전체를 이어붙이지 않는다).
+ */
 export async function POST(req: Request) {
-  const b = (await req.json()) as { kind: "revise" | "comment" | "subtitle"; author_id: string; text?: string };
-  if (!b.author_id || !b.kind) return NextResponse.json({ error: "kind, author_id 필요" }, { status: 400 });
+  const b = (await req.json()) as {
+    kind: "revise" | "comment" | "subtitle";
+    ms_id: string;
+    /** 편집자가 화면에서 고친 텍스트가 있으면 그것을 기준으로 생성 */
+    text?: string;
+  };
+  if (!b.ms_id || !b.kind) return NextResponse.json({ error: "kind, ms_id 필요" }, { status: 400 });
 
-  const base = b.text && b.text.trim() ? b.text : await assembleOriginal(b.author_id);
-  if (!base.trim()) return NextResponse.json({ error: "원문이 없습니다" }, { status: 404 });
+  const ms = await getManuscript(b.ms_id);
+  if (!ms) return NextResponse.json({ error: "원고를 찾을 수 없습니다." }, { status: 404 });
 
-  if (b.kind === "revise") {
-    const { result, ai } = await reviseText(base);
-    return NextResponse.json({ result, ai });
-  }
-  if (b.kind === "subtitle") {
-    const { result, ai } = await makeSubtitle(base);
-    return NextResponse.json({ result, ai });
-  }
-  // comment
-  const meta = await queryOne<{ name: string; final_university: string | null }>(
-    `SELECT name, final_university FROM authors WHERE id = ?`,
-    [b.author_id],
-  );
-  const { result, ai } = await makeComment(base, meta?.name ?? "학생", meta?.final_university ?? "");
-  return NextResponse.json({ result, ai });
+  const base = b.text?.trim() ? b.text : (ms.answer_text ?? "");
+  if (!base.trim()) return NextResponse.json({ error: "원문이 없습니다." }, { status: 404 });
+
+  if (b.kind === "revise") return NextResponse.json(await reviseText(base));
+  if (b.kind === "subtitle") return NextResponse.json(await makeSubtitle(base));
+  return NextResponse.json(await makeComment(base, ms.name ?? "학생", ms.final_university ?? ""));
 }
 
 export async function GET() {

@@ -48,6 +48,22 @@ async function chat(system: string, user: string, maxTokens = 700): Promise<stri
   return json.choices?.[0]?.message?.content?.trim() ?? null;
 }
 
+/** JSON 응답 전용 호출. 코드펜스·주변 텍스트를 관대하게 파싱한다(모델 자유도를 죽이지 않기 위함). */
+export async function chatJson<T>(system: string, user: string, maxTokens = 3000): Promise<T | null> {
+  const raw = await chat(system, user, maxTokens);
+  if (!raw) return null;
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const body = (fenced ? fenced[1] : raw).trim();
+  const start = body.search(/[[{]/);
+  if (start < 0) return null;
+  const end = Math.max(body.lastIndexOf("]"), body.lastIndexOf("}"));
+  try {
+    return JSON.parse(body.slice(start, end + 1)) as T;
+  } catch {
+    return null;
+  }
+}
+
 const REVISE_SYS =
   "당신은 시대인재 <항해일지> 편집국의 탈고 에이전트다. REVISE.md 원칙에 따라 원문의 의미·경험·문체를 최대한 보존하면서 오탈자·띄어쓰기·문법·용어·흐름만 정리한다. 창의적 재작성 금지, 원문에 없는 사실 추가 금지. 결과는 탈고된 본문 텍스트만 출력한다.";
 
