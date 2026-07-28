@@ -5,6 +5,9 @@ import { query, queryOne } from "@/lib/db";
    선별 단위는 작성자가 아니라 qna 행이다 (SELECTION.md §1).
    ───────────────────────────────────────────────────────────── */
 
+/** AI 작업 큐 상태. 러너(scripts/ax-runner.mjs)가 queued → running → done/error 로 옮긴다. */
+export type JobStatus = "idle" | "queued" | "running" | "done" | "error";
+
 export interface Issue {
   id: string;
   project: string;
@@ -33,6 +36,12 @@ export interface Toc {
   exported_at: string | null;
   created_at: string;
   updated_at: string;
+  /* AI 작업 큐 (0011) — Worker는 요청만 적고 로컬 러너가 처리한다 */
+  shortlist_status: JobStatus;
+  shortlist_requested_at: string | null;
+  shortlist_started_at: string | null;
+  shortlist_progress: string | null;
+  shortlist_error: string | null;
   /* 집계 */
   cand_count?: number;
   ms_count?: number;
@@ -259,14 +268,40 @@ export async function listPool(cohort: number, minLen = 100): Promise<PoolRow[]>
   );
 }
 
-/** 이미 게재 확정된 내용의 지문 — LLM 중복 판정(L3) 입력. 원문 대신 지문만 넣는다. */
-export async function listPublishedEpisodes(): Promise<
-  { toc_id: string; toc_title: string; issue_label: string; episode_json: string | null; content_hash: string | null }[]
-> {
-  return query(
-    `SELECT m.toc_id, t.title toc_title, i.issue_label, m.episode_json, m.content_hash
-     FROM ax_manuscript m
-     JOIN ax_toc t   ON t.id = m.toc_id
-     JOIN ax_issue i ON i.id = t.issue_id`,
+/** 후보 풀 크기만 센다(화면 표시용). 실제 선별은 로컬 러너가 수행한다. */
+export async function countPool(cohort: number, minLen = 100): Promise<number> {
+  const r = await queryOne<{ n: number }>(
+    `SELECT COUNT(*) n
+     FROM qna a
+     JOIN questions q ON q.id = a.question_id
+     WHERE q.cohort = ? AND q.is_active = 1
+       AND LENGTH(TRIM(COALESCE(a.answer_text,''))) >= ?
+       AND a.id NOT IN (SELECT qna_id FROM ax_manuscript)`,
+    [cohort, minLen],
   );
+  return r?.n ?? 0;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   러너 생존 신호 — 큐에만 쌓이고 있는 상황을 화면에서 바로 알아채기 위함
+   ───────────────────────────────────────────────────────────── */
+
+export interface RunnerState {
+  last_seen_at: string | null;
+  status: string | null;
+  note: string | null;
+}
+
+export async function getRunnerState(): Promise<RunnerState | null> {
+  return queryOne<RunnerState>(`SELECT last_seen_at, status, note FROM ax_runner WHERE id = 'runner'`);
+}
+
+/** 러너를 살아있다고 볼 최대 무응답 시간(초). 이보다 오래면 화면에 경고를 띄운다. */
+export const RUNNER_STALE_SEC = 180;
+
+export function runnerAgeSec(last: string | null | undefined): number | null {
+  if (!last) return null;
+  const t = Date.parse(last.includes("T") ? last : last.replace(" ", "T") + "Z");
+  if (Number.isNaN(t)) return null;
+  return Math.max(0, Math.round((Date.now() - t) / 1000));
 }
