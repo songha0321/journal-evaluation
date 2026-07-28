@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/songha0321/journal-evaluation#readme",
   "dependencies": {
+    "lucide-react": "^1.27.0",
     "next": "^15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
