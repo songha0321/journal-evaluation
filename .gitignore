@@ -21,3 +21,6 @@ out/
 backups/
 
 .claude/settings.local.json
+
+# 역대 인쇄본 PDF · 최종원고 docx (원본 아카이브, 500MB+ / 학생 실명 포함) — 커밋 금지
+archive/
