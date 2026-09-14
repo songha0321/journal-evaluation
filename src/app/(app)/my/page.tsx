@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Avatar } from "@/components/ui/Avatar";
+import { NameEditor } from "@/components/settings/NameEditor";
 import { Icon } from "@/components/ui/Icon";
 import { getCurrentUser } from "@/lib/auth";
 import { queryOne } from "@/lib/db";
@@ -46,12 +47,12 @@ export default async function MyPage() {
 
   return (
     <>
-      <PageHeader title="마이페이지" desc="내 계정 정보. 이름과 사진은 Google 계정을 따르고, 역할은 운영관리자가 지정합니다" />
+      <PageHeader title="마이페이지" desc="내 계정 정보. 사진은 Google 계정을 따르고, 이름은 여기서 바꿀 수 있으며, 역할은 운영관리자가 지정합니다" />
       <div className="page-body">
         <div className="my-profile">
           <Avatar name={user.name} picture={user.picture} size={64} />
           <div>
-            <div className="my-name">{user.name}</div>
+            <NameEditor name={user.name} />
             <div className="muted">{user.email}</div>
           </div>
         </div>

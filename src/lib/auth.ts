@@ -50,9 +50,12 @@ function b64url(bytes: ArrayBuffer | Uint8Array): string {
   for (const b of u8) s += String.fromCharCode(b);
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
+/** base64url → UTF-8 문자열. atob는 바이트를 Latin-1 문자로 돌려주므로 TextDecoder로 다시 풀어야 한글이 깨지지 않는다. */
 function b64urlDecode(s: string): string {
   const pad = s.length % 4 === 0 ? "" : "=".repeat(4 - (s.length % 4));
-  return atob(s.replace(/-/g, "+").replace(/_/g, "/") + pad);
+  const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/") + pad);
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
 }
 async function hmac(secret: string, data: string): Promise<string> {
   const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);

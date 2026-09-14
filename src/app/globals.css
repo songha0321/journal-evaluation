@@ -1269,3 +1269,5 @@ th.num .th-panel { left: 0; right: auto; }
 .pc-bar > i { display: block; height: 100%; }
 .switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
 .switch input { width: 16px; height: 16px; margin: 0; accent-color: var(--point); }
+
+.name-editor { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
