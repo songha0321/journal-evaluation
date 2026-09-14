@@ -2,30 +2,28 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
+import { Dropdown } from "@/components/ui/Dropdown";
+import { SearchInput } from "@/components/ui/SearchInput";
 
 export interface SelectField {
   key: string;
   label: string;
   options: { value: string; label: string }[];
+  width?: number | string;
 }
 
 export interface TextField {
   key: string;
   label: string;
   placeholder?: string;
+  width?: number | string;
 }
 
 /**
- * URL search-param driven filter bar. Selecting an option / submitting a search
- * pushes updated params; server component re-reads and re-queries.
+ * URL search-param 기반 필터 바. 드롭다운은 즉시, 검색은 Enter로 반영한다.
+ * 필터가 바뀌면 page 파라미터는 지운다(페이징 초기화).
  */
-export function FilterBar({
-  selects = [],
-  texts = [],
-}: {
-  selects?: SelectField[];
-  texts?: TextField[];
-}) {
+export function FilterBar({ selects = [], texts = [] }: { selects?: SelectField[]; texts?: TextField[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -35,7 +33,9 @@ export function FilterBar({
       const next = new URLSearchParams(params.toString());
       if (value) next.set(key, value);
       else next.delete(key);
-      router.push(`${pathname}?${next.toString()}`);
+      next.delete("page");
+      const qs = next.toString();
+      router.push(qs ? `${pathname}?${qs}` : pathname);
     },
     [params, pathname, router],
   );
@@ -43,39 +43,31 @@ export function FilterBar({
   return (
     <div className="toolbar">
       {selects.map((f) => (
-        <select
+        <Dropdown
           key={f.key}
-          className="select"
           value={params.get(f.key) ?? ""}
-          onChange={(e) => setParam(f.key, e.target.value)}
-          aria-label={f.label}
-        >
-          <option value="">{f.label} 전체</option>
-          {f.options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      ))}
-      {texts.map((f) => (
-        <input
-          key={f.key}
-          className="input"
-          defaultValue={params.get(f.key) ?? ""}
-          placeholder={f.placeholder ?? f.label}
-          aria-label={f.label}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") setParam(f.key, (e.target as HTMLInputElement).value.trim());
-          }}
+          options={f.options}
+          allLabel={`${f.label} 전체`}
+          ariaLabel={f.label}
+          onChange={(v) => setParam(f.key, v)}
+          width={f.width ?? 160}
         />
       ))}
-      {(params.toString() && (
+      {texts.map((f) => (
+        <SearchInput
+          key={f.key}
+          defaultValue={params.get(f.key) ?? ""}
+          placeholder={f.placeholder ?? `${f.label} 검색`}
+          ariaLabel={f.label}
+          onSubmit={(v) => setParam(f.key, v)}
+          width={f.width ?? 280}
+        />
+      ))}
+      {params.toString() ? (
         <button type="button" className="btn" onClick={() => router.push(pathname)}>
           초기화
         </button>
-      )) ||
-        null}
+      ) : null}
     </div>
   );
 }

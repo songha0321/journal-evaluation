@@ -1,0 +1,8 @@
+# 로컬 개발용. 복사해서 .dev.vars 로 저장 (gitignore 됨).
+# 로그인 없이 개발하려면 아래 한 줄만 켠다. 프로덕션에는 절대 넣지 않는다.
+AUTH_DEV_BYPASS=1
+
+# 실제 Google 로그인을 로컬에서 시험할 때 (AUTH_DEV_BYPASS 지우고):
+# GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
+# GOOGLE_CLIENT_SECRET=GOCSPX-xxxx
+# AUTH_SECRET=32자-이상-임의-문자열

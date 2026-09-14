@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, RotateCcw, Underline, Save, TriangleAlert, X, Pencil, Eye } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { KIND_META, applyEdits, isStale, type RevisionEdit } from "@/lib/revision";
 import { formatEditedAt } from "@/lib/ax-progress";
@@ -123,13 +124,13 @@ export function RevisionEditor(p: Props) {
         <span className="toolbar" style={{ margin: 0, gap: 8 }}>
           <b style={{ fontSize: 15 }}>{p.name}</b>
           <span className="faint">{p.university || "대학 미입력"}</span>
-          <span className="faint">·</span>
+          <span className="faint" aria-hidden />
           <span className="faint">{p.studentType || "-"}</span>
-          <span className="faint">· 최종 편집 {formatEditedAt(updatedAt)}</span>
+          <span className="faint">최종 편집 {formatEditedAt(updatedAt)}</span>
         </span>
         <span className="toolbar" style={{ margin: 0, gap: 8 }}>
           <button className="btn" onClick={addHighlightFromSelection} type="button">
-            <Underline size={15} strokeWidth={2} aria-hidden />
+            <Icon as={Underline} />
             중요 문장 밑줄
           </button>
           <label className="btn" style={{ cursor: "pointer" }}>
@@ -144,11 +145,11 @@ export function RevisionEditor(p: Props) {
             검수 필요
           </label>
           <button className="btn" onClick={() => save("edited")} disabled={!!busy} type="button">
-            <Save size={15} strokeWidth={2} aria-hidden />
+            <Icon as={Save} />
             {busy === "edited" ? "저장 중…" : "저장"}
           </button>
           <button className="btn primary" onClick={() => save("final")} disabled={!!busy} type="button">
-            <Check size={15} strokeWidth={2} aria-hidden />
+            <Icon as={Check} />
             {busy === "final" ? "확정 중…" : "확정"}
           </button>
           {saved && <span style={{ color: "var(--green)", fontWeight: 600 }}>{saved}</span>}
@@ -157,7 +158,7 @@ export function RevisionEditor(p: Props) {
 
       {msg && (
         <div className="alert warn">
-          <TriangleAlert size={16} strokeWidth={1.75} aria-hidden />
+          <Icon as={TriangleAlert} />
           {msg}
         </div>
       )}
@@ -167,7 +168,7 @@ export function RevisionEditor(p: Props) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 14 }}>
           <label className="field" style={{ marginBottom: 0 }}>
             <span className="flabel">
-              소제목<span className="fhint">최대 25자 · {subtitle.length}자</span>
+              소제목<span className="fhint">최대 25자, {subtitle.length}자</span>
             </span>
             <input
               className="input"
@@ -182,7 +183,7 @@ export function RevisionEditor(p: Props) {
           </label>
           <label className="field" style={{ marginBottom: 0 }}>
             <span className="flabel">
-              항해일지 comment<span className="fhint">편집자 확인 필수 · {comment.length}자</span>
+              항해일지 comment<span className="fhint">편집자 확인 필수, {comment.length}자</span>
             </span>
             <div className="ta-wrap">
               <textarea
@@ -223,12 +224,12 @@ export function RevisionEditor(p: Props) {
                   <button className="btn" onClick={() => toggle(e.id)} type="button">
                     {e.applied ? (
                       <>
-                        <RotateCcw size={13} strokeWidth={2} aria-hidden />
+                        <Icon as={RotateCcw} size="sm" />
                         되돌리기
                       </>
                     ) : (
                       <>
-                        <Check size={13} strokeWidth={2} aria-hidden />
+                        <Icon as={Check} size="sm" />
                         반영하기
                       </>
                     )}
@@ -253,12 +254,12 @@ export function RevisionEditor(p: Props) {
         <button className="btn" onClick={() => setRawMode(!rawMode)} type="button">
           {rawMode ? (
             <>
-              <Eye size={14} strokeWidth={1.75} aria-hidden />
+              <Icon as={Eye} />
               밑줄 보기
             </>
           ) : (
             <>
-              <Pencil size={14} strokeWidth={1.75} aria-hidden />
+              <Icon as={Pencil} />
               직접 편집
             </>
           )}
@@ -286,7 +287,7 @@ export function RevisionEditor(p: Props) {
         </div>
         <div className="pane">
           <div className="faint" style={{ marginBottom: 6 }}>
-            탈고문 {highlights.length > 0 && `· 밑줄 ${highlights.length}곳`}
+            탈고문 {highlights.length > 0 && `(밑줄 ${highlights.length}곳)`}
           </div>
           {rawMode ? (
             <textarea
@@ -349,7 +350,7 @@ export function RevisionEditor(p: Props) {
                   style={{ marginLeft: 4, border: "none", background: "none", cursor: "pointer", color: "var(--red)" }}
                   type="button"
                 >
-                  <X size={12} strokeWidth={2.5} />
+                  <Icon as={X} size="sm" />
                 </button>
               </span>
             ))}

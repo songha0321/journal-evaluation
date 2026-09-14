@@ -32,6 +32,7 @@ export interface Toc {
   select_count: number;
   shortlisted_at: string | null;
   confirmed_at: string | null;
+  confirmed_by: string | null;
   finalized_at: string | null;
   exported_at: string | null;
   created_at: string;
@@ -304,4 +305,39 @@ export function runnerAgeSec(last: string | null | undefined): number | null {
   const t = Date.parse(last.includes("T") ? last : last.replace(" ", "T") + "Z");
   if (Number.isNaN(t)) return null;
   return Math.max(0, Math.round((Date.now() - t) / 1000));
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   대시보드 — 최근 편집 원고 (호차·목차 조인)
+   ───────────────────────────────────────────────────────────── */
+
+export interface RecentManuscript {
+  id: string;
+  toc_id: string;
+  issue_id: string;
+  project: string;
+  issue_label: string;
+  part_no: number | null;
+  chapter_no: number | null;
+  title: string;
+  subtitle: string | null;
+  status: string;
+  needs_review: number;
+  updated_at: string;
+  name: string;
+}
+
+export async function listRecentManuscripts(limit = 10): Promise<RecentManuscript[]> {
+  return query<RecentManuscript>(
+    `SELECT m.id, m.toc_id, t.issue_id, i.project, i.issue_label, t.part_no, t.chapter_no, t.title,
+            m.subtitle, m.status, m.needs_review, m.updated_at, a.name
+     FROM ax_manuscript m
+     JOIN ax_toc t ON t.id = m.toc_id
+     JOIN ax_issue i ON i.id = t.issue_id
+     JOIN authors a ON a.id = m.author_id
+     ORDER BY m.updated_at DESC
+     LIMIT ?`,
+    [limit],
+  );
 }

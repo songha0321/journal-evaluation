@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { X } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 
 interface Props {
   open: boolean;
@@ -40,7 +41,7 @@ export function Modal({ open, title, sub, wide, onClose, children, footer }: Pro
             {sub && <p className="sub">{sub}</p>}
           </div>
           <button className="modal-close" onClick={onClose} aria-label="닫기" type="button">
-            <X size={20} strokeWidth={1.75} />
+            <Icon as={X} size="lg" />
           </button>
         </div>
         <div className="modal-body">{children}</div>

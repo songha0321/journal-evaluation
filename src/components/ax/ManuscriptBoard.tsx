@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sparkles, Download, Check, TriangleAlert, Pencil, X } from "lucide-react";
+import { DataTable } from "@/components/ui/DataTable";
+import { Icon } from "@/components/ui/Icon";
 import { CharTextarea } from "@/components/ui/CharTextarea";
 import { RunnerNotice, type RunnerInfo } from "@/components/ax/RunnerNotice";
 import { Modal } from "@/components/ui/Modal";
@@ -126,7 +128,7 @@ export function ManuscriptBoard({ toc, manuscripts }: { toc: Toc; manuscripts: M
         <div className="toolbar" style={{ justifyContent: "space-between", marginBottom: 8 }}>
           <b>목차 정보</b>
           <button className="btn" onClick={() => setEditOpen(true)} type="button">
-            <Pencil size={14} strokeWidth={1.75} aria-hidden />
+            <Icon as={Pencil} />
             수정
           </button>
         </div>
@@ -140,11 +142,11 @@ export function ManuscriptBoard({ toc, manuscripts }: { toc: Toc; manuscripts: M
 
       <div className="toolbar" style={{ justifyContent: "space-between" }}>
         <span className="faint">
-          선별 원고 {total}개 · 확정 {finals}/{total}
+          선별 원고 {total}개, 확정 {finals}/{total}
         </span>
         <span className="toolbar" style={{ margin: 0 }}>
           <button className="btn" onClick={runRevise} disabled={!!busy || busyRevise || total === 0} type="button">
-            <Sparkles size={15} strokeWidth={2} aria-hidden />
+            <Icon as={Sparkles} />
             {busyRevise ? "AI 탈고 진행 중…" : "AI 원고 탈고 실행"}
           </button>
           <button
@@ -155,7 +157,7 @@ export function ManuscriptBoard({ toc, manuscripts }: { toc: Toc; manuscripts: M
             title={canFinalize ? "" : "모든 원고가 확정되어야 활성화됩니다."}
             type="button"
           >
-            <Check size={15} strokeWidth={2} aria-hidden />
+            <Icon as={Check} />
             {toc.finalized_at ? "원고 확정됨" : "원고 확정"}
           </button>
           <a
@@ -165,7 +167,7 @@ export function ManuscriptBoard({ toc, manuscripts }: { toc: Toc; manuscripts: M
             title={canDownload ? "" : "‘원고 확정’ 후 다운로드할 수 있습니다."}
             style={!canDownload ? { opacity: 0.5, pointerEvents: "none" } : undefined}
           >
-            <Download size={15} strokeWidth={2} aria-hidden />
+            <Icon as={Download} />
             원고 다운로드
           </a>
         </span>
@@ -173,13 +175,13 @@ export function ManuscriptBoard({ toc, manuscripts }: { toc: Toc; manuscripts: M
 
       {msg && (
         <div className="alert error">
-          <TriangleAlert size={16} strokeWidth={1.75} aria-hidden />
+          <Icon as={TriangleAlert} />
           {msg}
         </div>
       )}
       {subtitleMixed && (
         <div className="alert warn">
-          <TriangleAlert size={16} strokeWidth={1.75} aria-hidden />
+          <Icon as={TriangleAlert} />
           소제목이 일부에만 입력되어 있습니다 ({withSubtitle}/{total}). 목차 안에서는 전부 입력하거나 전부 비워야
           합니다.
         </div>
@@ -189,63 +191,62 @@ export function ManuscriptBoard({ toc, manuscripts }: { toc: Toc; manuscripts: M
       {total === 0 ? (
         <div className="empty">확정된 수기가 없습니다. [AI 수기 선별]에서 먼저 확정하세요.</div>
       ) : (
-        <div className="table-wrap" style={{ marginTop: 12 }}>
-          <table>
-            <thead>
-              <tr>
-                <th>소제목</th>
-                <th>이름</th>
-                <th>최종대학</th>
-                <th>comment</th>
-                <th>상태</th>
-                <th>최종 편집 일시</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {manuscripts.map((m) => {
+        <DataTable
+          rowKey="id"
+          rows={manuscripts}
+          style={{ marginTop: 12 }}
+          columns={[
+            {
+              key: "subtitle",
+              label: "소제목",
+              type: "strong",
+              sortable: true,
+              render: (m) => (m.subtitle?.trim() ? <span className="clip" style={{ maxWidth: 220 }}>{m.subtitle}</span> : <span className="faint">미입력</span>),
+            },
+            { key: "name", label: "이름", width: 90 },
+            { key: "final_university", label: "최종대학", type: "clip", maxWidth: 160 },
+            {
+              key: "comment",
+              label: "comment",
+              type: "clip",
+              maxWidth: 280,
+              render: (m) => (m.comment?.trim() ? <span className="clip" title={m.comment}>{m.comment}</span> : <span className="faint">미작성</span>),
+              sortable: true,
+            },
+            {
+              key: "status",
+              label: "상태",
+              sortable: true,
+              render: (m) => {
                 const rev = reviseOf(m.id);
                 const st = STATUS_META[m.status] ?? { label: m.status, tone: "gray" };
                 return (
-                  <tr key={m.id}>
-                    <td style={{ fontWeight: 600, maxWidth: 220 }}>
-                      {m.subtitle?.trim() ? m.subtitle : <span className="faint">미입력</span>}
-                    </td>
-                    <td>{m.name}</td>
-                    <td className="muted">{m.final_university || "-"}</td>
-                    <td
-                      className="muted"
-                      style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis" }}
-                      title={m.comment ?? ""}
-                    >
-                      {m.comment?.trim() ? m.comment : <span className="faint">미작성</span>}
-                    </td>
-                    <td>
-                      <span className="toolbar" style={{ margin: 0, gap: 4 }}>
-                        <span className={`badge ${st.tone}`}>{st.label}</span>
-                        {rev && REVISE_META[rev] && (
-                          <span className={`badge ${REVISE_META[rev].tone}`}>{REVISE_META[rev].label}</span>
-                        )}
-                        {m.needs_review === 1 && (
-                          <span className="badge amber">
-                            <TriangleAlert size={11} strokeWidth={2} aria-hidden />
-                            검수 필요
-                          </span>
-                        )}
+                  <span style={{ display: "inline-flex", gap: 4 }}>
+                    <span className={`badge ${st.tone}`}>{st.label}</span>
+                    {rev && REVISE_META[rev] && <span className={`badge ${REVISE_META[rev].tone}`}>{REVISE_META[rev].label}</span>}
+                    {m.needs_review === 1 && (
+                      <span className="badge amber">
+                        <Icon as={TriangleAlert} size="sm" />
+                        검수 필요
                       </span>
-                    </td>
-                    <td className="muted">{formatEditedAt(m.updated_at)}</td>
-                    <td>
-                      <Link className="row-link" href={`/ax/toc/${toc.id}/${m.id}`}>
-                        편집 →
-                      </Link>
-                    </td>
-                  </tr>
+                    )}
+                  </span>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
+              },
+            },
+            { key: "updated_at", label: "최종 편집 일시", type: "muted", width: 150, render: (m) => <span className="muted">{formatEditedAt(m.updated_at)}</span>, sortable: true },
+            {
+              key: "edit",
+              label: "",
+              width: 80,
+              render: (m) => (
+                <Link className="tbl-link" href={`/ax/toc/${toc.id}/${m.id}`}>
+                  편집
+                </Link>
+              ),
+            },
+          ]}
+        />
       )}
 
       <Modal
@@ -257,7 +258,7 @@ export function ManuscriptBoard({ toc, manuscripts }: { toc: Toc; manuscripts: M
           <>
             <div className="spacer" />
             <button className="btn" onClick={() => setEditOpen(false)} type="button">
-              <X size={14} strokeWidth={2} aria-hidden />
+              <Icon as={X} />
               취소
             </button>
             <button className="btn primary" onClick={saveToc} type="button">

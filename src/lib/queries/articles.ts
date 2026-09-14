@@ -1,5 +1,4 @@
 import { query, queryOne } from "@/lib/db";
-import * as M from "@/lib/mockData";
 import type { Article } from "@/types/entities";
 
 export interface ArticleListRow {
@@ -19,7 +18,6 @@ export interface ArticleListRow {
  * 없으면 평가 상위 author를 원고 대상 후보로 보여준다.
  */
 export async function listArticles(): Promise<ArticleListRow[]> {
-  if (M.USE_MOCK) return M.mockArticleList;
   const existing = await query<ArticleListRow>(
     `SELECT ar.id, ar.author_id, a.name, a.cohort, ar.title, ar.article_status,
             ar.editor_name, ar.updated_at
@@ -43,7 +41,6 @@ export async function listArticles(): Promise<ArticleListRow[]> {
 }
 
 export async function getArticleByAuthor(authorId: string): Promise<Article | null> {
-  if (M.USE_MOCK) return M.mockArticleByAuthor(authorId);
   return queryOne<Article>(
     `SELECT id, author_id, submission_id, title, draft_content, edited_content,
             final_content, article_status, editor_name, editor_note, updated_at

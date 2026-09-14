@@ -11,7 +11,7 @@ function Row({ k, v }: { k: string; v: React.ReactNode }) {
 }
 
 export function AuthorProfileCard({ author }: { author: Author }) {
-  const subjects = [author.sci1_subject, author.sci2_subject].filter(Boolean).join(" · ");
+  const subjects = [author.sci1_subject, author.sci2_subject].filter(Boolean).join(", ");
   return (
     <div className="card">
       <dl className="kv">

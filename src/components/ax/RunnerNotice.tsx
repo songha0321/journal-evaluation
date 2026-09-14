@@ -1,4 +1,5 @@
 import { Terminal, TriangleAlert } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 
 export interface RunnerInfo {
   last_seen_at: string | null;
@@ -33,7 +34,7 @@ export function RunnerNotice({ runner }: { runner: RunnerInfo | null | undefined
   if (dead) {
     return (
       <div className="alert warn" style={{ marginTop: 10, marginBottom: 0 }}>
-        <TriangleAlert size={15} strokeWidth={1.75} aria-hidden />
+        <Icon as={TriangleAlert} />
         <span>
           로컬 러너가 응답하지 않습니다{sec !== null && ` (마지막 응답 ${ageLabel(sec)})`}. 요청은 큐에
           쌓여 있으며, 아래 명령을 실행하면 이어서 처리됩니다.
@@ -56,9 +57,9 @@ export function RunnerNotice({ runner }: { runner: RunnerInfo | null | undefined
 
   return (
     <div className="faint" style={{ marginTop: 10, fontSize: 12, display: "flex", gap: 6, alignItems: "center" }}>
-      <Terminal size={13} strokeWidth={1.75} aria-hidden />
-      러너 연결됨 · 마지막 응답 {ageLabel(sec)}
-      {runner?.note ? ` · ${runner.note}` : ""}
+      <Icon as={Terminal} size="sm" />
+      러너 연결됨, 마지막 응답 {ageLabel(sec)}
+      {runner?.note ? `, ${runner.note}` : ""}
     </div>
   );
 }

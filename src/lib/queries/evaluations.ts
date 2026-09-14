@@ -1,5 +1,4 @@
 import { query } from "@/lib/db";
-import * as M from "@/lib/mockData";
 
 export interface EvaluationRow {
   evaluation_id: string;
@@ -20,10 +19,6 @@ export interface EvaluationRow {
 
 /** 평가/선별 비교 — one row per evaluation, sorted by score desc. */
 export async function listEvaluations(cohort?: number): Promise<EvaluationRow[]> {
-  if (M.USE_MOCK)
-    return M.mockEvaluationRows
-      .filter((r) => cohort == null || r.cohort === cohort)
-      .sort((a, b) => (b.total_score ?? 0) - (a.total_score ?? 0));
   const where = cohort != null ? "WHERE a.cohort = ?" : "";
   const params = cohort != null ? [cohort] : [];
   return query<EvaluationRow>(
@@ -42,7 +37,6 @@ export async function listEvaluations(cohort?: number): Promise<EvaluationRow[]>
 }
 
 export async function getEvaluationCohorts(): Promise<number[]> {
-  if (M.USE_MOCK) return [5, 6, 7, 8, 9];
   const rows = await query<{ cohort: number }>(
     `SELECT DISTINCT a.cohort FROM evaluations e JOIN authors a ON a.id = e.author_id ORDER BY a.cohort`,
   );

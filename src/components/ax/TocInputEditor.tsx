@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Sparkles, Trash2, TriangleAlert, Check } from "lucide-react";
+import { Plus, TriangleAlert, Check, ArrowRight, BookOpen } from "lucide-react";
+import { KebabMenu } from "@/components/ui/KebabMenu";
+import { StageBar } from "@/components/ax/StageBar";
+import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { CharTextarea } from "@/components/ui/CharTextarea";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -85,16 +88,20 @@ export function TocInputEditor({ issueId, initial }: { issueId: string; initial:
   const [rows, setRows] = useState<Row[]>(initial.map(toRow));
   const [touched, setTouched] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [queue, setQueue] = useState<QueueState | null>(null);
   const [err, setErr] = useState("");
   const polling = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** 이 화면에서 실행 중(queued/running)인 것을 본 적이 있을 때만, 끝나면 다음 화면으로 넘긴다.
+   *  처음 열자마자 넘겨 버리면 완료된 1단계를 다시 볼 수 없다(2026-09-14 버그). */
+  const sawActive = useRef(false);
 
   const running = queue?.active ?? null;
 
   const blocking = useMemo(() => rows.flatMap((r) => missingFields(r).map((f) => ({ r, f }))), [rows]);
   const canStart = rows.length > 0 && blocking.length === 0 && !running;
 
-  /** 큐 상태 폴링. 모든 목차가 끝나면 [AI 수기 선별] 화면으로 넘긴다. */
+  /** 큐 상태 폴링. 이 화면에서 시작한 선별이 모두 끝나면 [AI 수기 선별] 화면으로 넘긴다. */
   const poll = useCallback(async () => {
     const r = (await fetch(`/api/ax/shortlist?issue_id=${encodeURIComponent(issueId)}`)
       .then((x) => x.json())
@@ -102,7 +109,9 @@ export function TocInputEditor({ issueId, initial }: { issueId: string; initial:
     if (!r?.tocs) return;
     const active = r.tocs.some((t) => t.shortlist_status === "queued" || t.shortlist_status === "running");
     setQueue({ rows: r.tocs, runner: r.runner ?? null, active });
-    if (!active && r.tocs.some((t) => t.shortlist_status === "done")) {
+    if (active) sawActive.current = true;
+    if (!active && sawActive.current && r.tocs.some((t) => t.shortlist_status === "done")) {
+      sawActive.current = false;
       router.push(`/ax/issues/${issueId}/ai-select`);
       router.refresh();
     }
@@ -166,6 +175,23 @@ export function TocInputEditor({ issueId, initial }: { issueId: string; initial:
     ]);
   }
 
+  /** 순서 변경 = 이웃 목차와 Part·Chapter 번호를 맞바꾸고 둘 다 저장한다(정렬 기준이 번호이므로). */
+  async function moveToc(id: string, dir: -1 | 1) {
+    const i = rows.findIndex((r) => r.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= rows.length) return;
+    const a = rows[i];
+    const b = rows[j];
+    const a2 = { ...a, part_no: b.part_no, chapter_no: b.chapter_no };
+    const b2 = { ...b, part_no: a.part_no, chapter_no: a.chapter_no };
+    const next = [...rows];
+    next[i] = b2;
+    next[j] = a2;
+    setRows(next);
+    await Promise.all([save(a2), save(b2)]);
+    router.refresh();
+  }
+
   async function removeToc(id: string) {
     await fetch(`/api/ax/toc?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     setRows((prev) => prev.filter((r) => r.id !== id));
@@ -195,25 +221,34 @@ export function TocInputEditor({ issueId, initial }: { issueId: string; initial:
 
   return (
     <div className="page-body">
-      {/* GNB 바로 밑 — AI 수기 선별 시작 */}
-      <div className="toolbar" style={{ marginBottom: 16 }}>
-        <button
-          className="btn primary"
-          onClick={() => (canStart ? setConfirmOpen(true) : setTouched(true))}
-          disabled={!!running}
-          aria-disabled={!canStart}
-          style={!canStart ? { opacity: 0.55, cursor: "not-allowed" } : undefined}
-          type="button"
-        >
-          <Sparkles size={15} strokeWidth={2} aria-hidden />
-          {running ? "AI 수기 선별 진행 중…" : "AI 수기 선별 시작"}
-        </button>
-        <button className="btn" onClick={addToc} disabled={!!running} type="button">
-          <Plus size={15} strokeWidth={2} aria-hidden />
-          목차 추가
-        </button>
-        <span className="faint">목차 {rows.length}개</span>
-      </div>
+      <StageBar
+        left={
+          <>
+            <span className="faint">목차 {rows.length}개</span>
+            <button className="btn" onClick={addToc} disabled={!!running} type="button">
+              <Icon as={Plus} />
+              목차 추가
+            </button>
+            <button className="btn" onClick={() => setPreviewOpen(true)} disabled={rows.length === 0} type="button">
+              <Icon as={BookOpen} />
+              목차 미리보기
+            </button>
+          </>
+        }
+        right={
+          <button
+            className="btn primary"
+            onClick={() => (canStart ? setConfirmOpen(true) : setTouched(true))}
+            disabled={!!running}
+            aria-disabled={!canStart}
+            style={!canStart ? { opacity: 0.55, cursor: "not-allowed" } : undefined}
+            type="button"
+          >
+            {running ? "AI 수기 선별 진행 중…" : "AI 수기 선별 시작"}
+            <Icon as={ArrowRight} />
+          </button>
+        }
+      />
 
       {queue && running && (
         <div className="card" style={{ marginBottom: 16 }}>
@@ -248,14 +283,14 @@ export function TocInputEditor({ issueId, initial }: { issueId: string; initial:
 
       {err && (
         <div className="alert error">
-          <TriangleAlert size={16} strokeWidth={1.75} aria-hidden />
+          <Icon as={TriangleAlert} />
           {err}
         </div>
       )}
 
       {touched && blocking.length > 0 && (
         <div className="alert warn">
-          <TriangleAlert size={16} strokeWidth={1.75} aria-hidden />
+          <Icon as={TriangleAlert} />
           비어 있는 필드가 {blocking.length}개 있습니다. 모든 항목을 입력해야 AI 수기 선별을 시작할 수 있습니다.
         </div>
       )}
@@ -264,26 +299,26 @@ export function TocInputEditor({ issueId, initial }: { issueId: string; initial:
         <div className="empty">목차가 없습니다. ‘목차 추가’로 첫 목차를 만드세요.</div>
       )}
 
-      {rows.map((r) => (
-        <div className="card" key={r.id} style={{ marginBottom: 14 }}>
+      {rows.map((r, idx) => (
+        <div className="toc-card" key={r.id}>
           <div className="toolbar" style={{ justifyContent: "space-between", marginBottom: 12 }}>
             <b style={{ fontSize: 15 }}>{rowLabel(r)}</b>
             <span className="toolbar" style={{ margin: 0, gap: 8 }}>
               {r.shortlisted_at && (
                 <span className="badge green">
-                  <Check size={12} strokeWidth={3} aria-hidden />
+                  <Icon as={Check} size="sm" />
                   선별 완료
                 </span>
               )}
-              <button
-                className="btn"
-                onClick={() => removeToc(r.id)}
+              <KebabMenu
+                label="목차 메뉴"
                 disabled={!!running}
-                title="목차 삭제"
-                type="button"
-              >
-                <Trash2 size={14} strokeWidth={1.75} aria-hidden />
-              </button>
+                items={[
+                  { label: "위로 이동", onSelect: () => moveToc(r.id, -1), disabled: idx === 0 },
+                  { label: "아래로 이동", onSelect: () => moveToc(r.id, 1), disabled: idx === rows.length - 1 },
+                  { label: "삭제", onSelect: () => removeToc(r.id), danger: true },
+                ]}
+              />
             </span>
           </div>
 
@@ -351,7 +386,7 @@ export function TocInputEditor({ issueId, initial }: { issueId: string; initial:
               value={r.toc_content}
               onChange={(v) => patch(r.id, { toc_content: v })}
               placeholder="예: 과목별 상반기 공부법과 6평 전후 피드백 방법"
-              minHeight={140}
+              minHeight={88}
             />
             <CharTextarea
               label="한마디"
@@ -361,18 +396,22 @@ export function TocInputEditor({ issueId, initial }: { issueId: string; initial:
               value={r.hanmadi}
               onChange={(v) => patch(r.id, { hanmadi: v })}
               placeholder="이 파트에서 다루는 세부 주제와 수기 구성을 안내하는 문장"
-              minHeight={110}
+              minHeight={88}
             />
           </div>
 
           {touched && missingFields(r).length > 0 && (
             <div className="field-error">
-              <TriangleAlert size={13} strokeWidth={2} aria-hidden />
-              미입력: {missingFields(r).join(" · ")}
+              <Icon as={TriangleAlert} size="sm" />
+              미입력: {missingFields(r).join(", ")}
             </div>
           )}
         </div>
       ))}
+
+      <Modal open={previewOpen} title="목차 미리보기" sub="지면에 실릴 순서대로. 번호가 비면 맨 뒤에 놓입니다." onClose={() => setPreviewOpen(false)}>
+        <TocPreview rows={rows} />
+      </Modal>
 
       <Modal
         open={confirmOpen}
@@ -393,7 +432,7 @@ export function TocInputEditor({ issueId, initial }: { issueId: string; initial:
       >
         <p className="muted" style={{ marginTop: 0 }}>
           목차 {rows.length}개를 선별 큐에 넣습니다. 실제 선별은 로컬 러너가 순차적으로 처리하며, 이미 다른
-          호차·목차에 실린 수기는 자동으로 제외됩니다.
+          호차나 목차에 실린 수기는 자동으로 제외됩니다.
         </p>
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.9 }}>
           {rows.map((r) => (
@@ -403,6 +442,49 @@ export function TocInputEditor({ issueId, initial }: { issueId: string; initial:
           ))}
         </ul>
       </Modal>
+    </div>
+  );
+}
+
+
+/** 책 목차 모양 미리보기: Part로 묶고 Chapter 순으로. 한마디와 선별 개수를 함께 보여준다. */
+function TocPreview({ rows }: { rows: Row[] }) {
+  const sorted = [...rows].sort((a, b) => {
+    const pa = a.part_no.trim() ? Number(a.part_no) : Infinity;
+    const pb = b.part_no.trim() ? Number(b.part_no) : Infinity;
+    if (pa !== pb) return pa - pb;
+    const ca = a.chapter_no.trim() ? Number(a.chapter_no) : Infinity;
+    const cb = b.chapter_no.trim() ? Number(b.chapter_no) : Infinity;
+    return ca - cb;
+  });
+  const parts = new Map<string, Row[]>();
+  for (const r of sorted) {
+    const key = r.part_no.trim() ? `Part ${r.part_no}` : "Part 미지정";
+    parts.set(key, [...(parts.get(key) ?? []), r]);
+  }
+  const total = rows.reduce((s, r) => s + (Number(r.select_count) || 0), 0);
+  return (
+    <div className="toc-preview">
+      {[...parts.entries()].map(([part, list]) => (
+        <section key={part} className="tp-part">
+          <h3>{part}</h3>
+          <ol>
+            {list.map((r) => (
+              <li key={r.id}>
+                <div className="tp-title">
+                  {r.chapter_no.trim() ? <span className="tp-ch">Chapter {r.chapter_no}.</span> : null}
+                  {r.title.trim() || <span className="faint">(목차명 미입력)</span>}
+                  <span className="tp-count">수기 {r.select_count || 0}편</span>
+                </div>
+                {r.hanmadi.trim() && <p className="tp-hanmadi">{r.hanmadi}</p>}
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))}
+      <p className="faint" style={{ fontSize: 12, marginTop: 12 }}>
+        목차 {rows.length}개, 수기 {total}편 예정
+      </p>
     </div>
   );
 }

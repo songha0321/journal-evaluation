@@ -1,6 +1,7 @@
 "use client";
 
 import { TriangleAlert } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 
 interface Props {
   label: string;
@@ -53,7 +54,7 @@ export function CharTextarea({
       </div>
       {invalid && (
         <span className="field-error">
-          <TriangleAlert size={13} strokeWidth={2} aria-hidden />
+          <Icon as={TriangleAlert} size="sm" />
           {error || `${label}을(를) 입력하세요.`}
         </span>
       )}

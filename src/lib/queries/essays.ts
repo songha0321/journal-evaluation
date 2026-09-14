@@ -1,5 +1,4 @@
 import { query, queryOne } from "@/lib/db";
-import * as M from "@/lib/mockData";
 import type { Author, EssayRow, QnaItem, Evaluation, Submission } from "@/types/entities";
 
 export interface EssayFilters {
@@ -12,16 +11,6 @@ export interface EssayFilters {
 
 /** 수기(Essay) 목록 — one row per author with submission + qna + eval summary. */
 export async function listEssays(filters: EssayFilters): Promise<EssayRow[]> {
-  if (M.USE_MOCK) {
-    return M.mockEssays.filter(
-      (e) =>
-        (filters.cohort == null || e.cohort === filters.cohort) &&
-        (!filters.studentType || e.student_type === filters.studentType) &&
-        (!filters.university || (e.final_university ?? "").includes(filters.university)) &&
-        (filters.minScore == null || (e.total_score ?? 0) >= filters.minScore) &&
-        (!filters.q || e.name.includes(filters.q)),
-    );
-  }
   const where: string[] = [];
   const params: unknown[] = [];
   if (filters.cohort != null) {
@@ -77,8 +66,6 @@ export async function getEssayFilterOptions(): Promise<{
   cohorts: number[];
   studentTypes: string[];
 }> {
-  if (M.USE_MOCK)
-    return { cohorts: [5, 6, 7, 8, 9], studentTypes: ["성적우수", "성적향상", "포레스트", "우선선발"] };
   const cohorts = await query<{ cohort: number }>(
     `SELECT DISTINCT cohort FROM authors ORDER BY cohort`,
   );
@@ -92,23 +79,10 @@ export async function getEssayFilterOptions(): Promise<{
 }
 
 export async function getAuthor(authorId: string): Promise<Author | null> {
-  if (M.USE_MOCK) return { ...M.mockAuthor, id: authorId };
   return queryOne<Author>(`SELECT * FROM authors WHERE id = ?`, [authorId]);
 }
 
 export async function getAuthorSubmissions(authorId: string): Promise<Submission[]> {
-  if (M.USE_MOCK)
-    return [
-      {
-        id: "mock-s-0",
-        author_id: authorId,
-        source_type: "google_form",
-        original_file_name: "answer_mock.hwp",
-        file_url: "https://example.com/file",
-        status: "selected",
-        submitted_at: "2026-05-20",
-      },
-    ];
   return query<Submission>(
     `SELECT id, author_id, source_type, original_file_name, file_url, status, submitted_at
      FROM submissions WHERE author_id = ? ORDER BY submitted_at`,
@@ -118,7 +92,6 @@ export async function getAuthorSubmissions(authorId: string): Promise<Submission
 
 /** qna joined to questions (question_text lives only on questions), cohort sort order. */
 export async function getAuthorQna(authorId: string): Promise<QnaItem[]> {
-  if (M.USE_MOCK) return M.mockQna;
   return query<QnaItem>(
     `SELECT q.id AS question_id, q.question_text, q.category, q.sort_order, n.answer_text
      FROM qna n
@@ -130,7 +103,6 @@ export async function getAuthorQna(authorId: string): Promise<QnaItem[]> {
 }
 
 export async function getAuthorEvaluations(authorId: string): Promise<Evaluation[]> {
-  if (M.USE_MOCK) return M.mockEvaluationsForAuthor;
   return query<Evaluation>(
     `SELECT * FROM evaluations WHERE author_id = ? ORDER BY created_at DESC`,
     [authorId],

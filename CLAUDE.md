@@ -791,7 +791,8 @@ When editing:
 * Do not rewrite unrelated files.
 * Do not delete design or requirements docs.
 * Preserve existing Korean business terminology.
-* Keep UI consistent with `sdij_design.md`.
+* Keep UI consistent with `DESIGN.md` (v3.3-AX, root; `sdij-design.md` is the upstream source).
+* **Every FE/BE/DB/runner change is logged in `QA.md`** — open a new 회차 table with item IDs before coding, record verification and deploy status after.
 * If schema and implementation conflict, pause and summarize the conflict before changing the schema.
 
 When generating code:

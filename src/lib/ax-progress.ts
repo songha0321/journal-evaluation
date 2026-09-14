@@ -113,6 +113,17 @@ export function issueProgress(tocs: Toc[]): { pct: number; tocCount: number; nee
  * 단계 완료율은 목차별 완료율의 select_count 가중 평균이고,
  * `done`은 **모든 목차가 그 단계를 끝냈을 때만** true다(하나라도 남으면 진행 중).
  */
+/** 단계 키 → 그 단계를 다루는 GNB 탭 slug */
+export function tabSlugForStage(key: StageKey): string {
+  return GNB_TABS.find((t) => t.stages.includes(key))?.slug ?? GNB_TABS[0].slug;
+}
+
+/** 호차의 현재 탭 = 아직 끝나지 않은 첫 단계가 속한 탭. 전부 끝났으면 마지막 탭 */
+export function currentTabSlug(stages: StageState[]): string {
+  const open = stages.find((s) => !s.done);
+  return open ? tabSlugForStage(open.key) : GNB_TABS[GNB_TABS.length - 1].slug;
+}
+
 export function issueStages(tocs: Toc[]): StageState[] {
   const per = tocs.map((t) => ({ p: tocProgress(t), w: Math.max(1, t.select_count) }));
   const totalW = per.reduce((s, x) => s + x.w, 0) || 1;

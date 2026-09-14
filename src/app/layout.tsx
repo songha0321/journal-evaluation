@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AppShell } from "@/components/shell/AppShell";
 
 export const metadata: Metadata = {
-  title: "시대인재 AUTO — 항해일지 AX 시스템",
-  description: "수기 선별·탈고·원고 제작 자동화 시스템",
+  title: "항해일지 AUTO",
+  description: "수기 선별, 탈고, 원고 제작 자동화 시스템",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -18,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <AppShell>{children}</AppShell>
+        {children}
       </body>
     </html>
   );

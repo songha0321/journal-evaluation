@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDB } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 
 /**
  * 편집자 수기 확정 (PROCESS.md S3).
@@ -13,6 +14,7 @@ export async function POST(req: Request) {
   }
   const db = await getDB();
   const keep = b.qna_ids;
+  const user = await getCurrentUser();
 
   // 1) 선택 해제분 삭제 → 해당 qna는 다시 후보가 된다.
   if (keep.length) {
@@ -62,10 +64,10 @@ export async function POST(req: Request) {
     }
   }
 
-  // 3) 목차의 확정 시각 기록 (S3 완료)
+  // 3) 목차의 확정 시각·확정자 기록 (S3 완료). 0014 confirmed_by
   await db
-    .prepare(`UPDATE ax_toc SET confirmed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-    .bind(b.toc_id)
+    .prepare(`UPDATE ax_toc SET confirmed_at = CURRENT_TIMESTAMP, confirmed_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+    .bind(user?.name ?? null, b.toc_id)
     .run();
 
   const n = await db

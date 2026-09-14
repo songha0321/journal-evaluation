@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { Dropdown } from "@/components/ui/Dropdown";
 
 const COHORTS = [9, 8, 7, 6, 5];
 
@@ -37,7 +39,7 @@ export function AddIssueButton({ project = "2027 항해일지" }: { project?: st
   return (
     <>
       <button className="btn primary" onClick={() => setOpen(true)} type="button">
-        <Plus size={15} strokeWidth={2} aria-hidden />
+        <Icon as={Plus} />
         호차 추가
       </button>
       <Modal
@@ -61,7 +63,7 @@ export function AddIssueButton({ project = "2027 항해일지" }: { project?: st
         <label className="field">
           <span className="flabel">
             호차명<span className="req">*</span>
-            <span className="fhint">예: 1호차 · 2호차 · Final</span>
+            <span className="fhint">예: 1호차, 2호차, Final</span>
           </span>
           <input
             className="input"
@@ -76,18 +78,13 @@ export function AddIssueButton({ project = "2027 항해일지" }: { project?: st
           <span className="flabel">
             대상 기수<span className="fhint">선별 후보 풀의 범위</span>
           </span>
-          <select
-            className="select"
-            style={{ width: "100%", height: 40 }}
-            value={cohort}
-            onChange={(e) => setCohort(Number(e.target.value))}
-          >
-            {COHORTS.map((c) => (
-              <option key={c} value={c}>
-                {c}기
-              </option>
-            ))}
-          </select>
+          <Dropdown
+            value={String(cohort)}
+            options={COHORTS.map((c) => ({ value: String(c), label: `${c}기` }))}
+            onChange={(v) => setCohort(Number(v))}
+            ariaLabel="대상 기수"
+            width="100%"
+          />
         </label>
       </Modal>
     </>

@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ArrowRight, TriangleAlert, Users, Sparkles } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { StageBar } from "@/components/ax/StageBar";
+import { DataTable } from "@/components/ui/DataTable";
 import type { Candidate, Toc } from "@/lib/ax";
 import { tocLabel } from "@/lib/ax";
+import { formatEditedAt } from "@/lib/ax-progress";
 
 const CONF_LABEL: Record<string, string> = { high: "적합도 높음", medium: "적합도 보통", low: "적합도 낮음" };
 const CONF_TONE: Record<string, string> = { high: "green", medium: "blue", low: "gray" };
@@ -65,90 +69,88 @@ export function SelectBoard({ issueId, tocs, candidates, confirmed }: Props) {
 
   return (
     <div className="page-body">
-      <div className="toolbar" style={{ marginBottom: 14, justifyContent: "space-between" }}>
-        <span className="faint">
-          목차 {tocs.length}개 · 확정 완료 {tocs.filter((t) => (t.ms_count ?? 0) > 0).length}개
-        </span>
-        <button
-          className="btn primary"
-          disabled={!allConfirmed}
-          aria-disabled={!allConfirmed}
-          title={allConfirmed ? "" : "모든 목차의 수기를 확정해야 활성화됩니다."}
-          onClick={() => router.push(`/ax/issues/${issueId}/revise`)}
-          type="button"
-        >
-          최종 확정 → AI 원고 탈고
-          <ArrowRight size={14} strokeWidth={2} aria-hidden />
-        </button>
-      </div>
+      <StageBar
+        left={
+          <span className="faint">
+            목차 {tocs.length}개, 확정 완료 {tocs.filter((t) => (t.ms_count ?? 0) > 0).length}개
+          </span>
+        }
+        right={
+          <button
+            className="btn primary"
+            disabled={!allConfirmed}
+            aria-disabled={!allConfirmed}
+            title={allConfirmed ? "" : "모든 목차의 수기를 확정해야 활성화됩니다."}
+            onClick={() => router.push(`/ax/issues/${issueId}/revise?step=ai_revise`)}
+            type="button"
+          >
+            AI 원고 탈고로
+            <Icon as={ArrowRight} />
+          </button>
+        }
+      />
 
       {tocs.length === 0 ? (
         <div className="empty">목차가 없습니다. [목차 입력]에서 먼저 목차를 만드세요.</div>
       ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>목차</th>
-                <th>목차내용</th>
-                <th className="num">후보</th>
-                <th className="num">확정</th>
-                <th>상태</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {tocs.map((t) => {
-                const cands = candidates[t.id] ?? [];
-                const done = (t.ms_count ?? 0) > 0;
-                return (
-                  <tr key={t.id}>
-                    <td style={{ fontWeight: 600 }}>{tocLabel(t)}</td>
-                    <td
-                      className="muted"
-                      style={{
-                        maxWidth: 340,
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                      title={t.toc_content ?? ""}
-                    >
-                      {t.toc_content || "-"}
-                    </td>
-                    <td className="num">{cands.length}</td>
-                    <td className="num">
-                      {t.ms_count ?? 0} / {t.select_count}
-                    </td>
-                    <td>
-                      {done ? (
-                        <span className="badge green">
-                          <Check size={12} strokeWidth={3} aria-hidden />
-                          확정
-                        </span>
-                      ) : t.shortlisted_at ? (
-                        <span className="badge blue">확정 대기</span>
-                      ) : (
-                        <span className="badge gray">선별 전</span>
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        className="btn"
-                        onClick={() => open(t)}
-                        disabled={!t.shortlisted_at}
-                        title={t.shortlisted_at ? "" : "AI 수기 선별이 끝나야 후보를 볼 수 있습니다."}
-                        type="button"
-                      >
-                        후보 검토
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          rowKey="id"
+          rows={tocs}
+          columns={[
+            { key: "label", label: "목차", type: "strong", render: (t) => <span className="strong">{tocLabel(t)}</span>, sortable: true, sortKey: "part_no" },
+            { key: "toc_content", label: "목차내용", type: "clip", maxWidth: 340 },
+            { key: "cand_count", label: "후보", type: "number", width: 70, render: (t) => (candidates[t.id] ?? []).length, sortable: false },
+            {
+              key: "ms_count",
+              label: "확정",
+              type: "number",
+              width: 90,
+              render: (t) => `${t.ms_count ?? 0} / ${t.select_count}`,
+              sortable: true,
+            },
+            {
+              key: "state",
+              label: "상태",
+              width: 100,
+              render: (t) =>
+                (t.ms_count ?? 0) > 0 ? (
+                  <span className="badge green">
+                    <Icon as={Check} size="sm" />
+                    확정
+                  </span>
+                ) : t.shortlisted_at ? (
+                  <span className="badge blue">확정 대기</span>
+                ) : (
+                  <span className="badge gray">선별 전</span>
+                ),
+            },
+            { key: "confirmed_by", label: "확정자", type: "muted", width: 90 },
+            {
+              key: "confirmed_at",
+              label: "확정 일시",
+              type: "muted",
+              width: 140,
+              render: (t) => <span className="muted">{t.confirmed_at ? formatEditedAt(t.confirmed_at) : "-"}</span>,
+              sortable: true,
+            },
+            {
+              key: "act",
+              label: "",
+              width: 110,
+              render: (t) => (
+                <button
+                  className="tbl-link"
+                  onClick={() => open(t)}
+                  disabled={!t.shortlisted_at}
+                  title={t.shortlisted_at ? "" : "AI 수기 선별이 끝나야 후보를 볼 수 있습니다."}
+                  type="button"
+                >
+                  후보 검토
+                </button>
+              ),
+            },
+          ]}
+        />
       )}
 
       <Modal
@@ -206,12 +208,12 @@ export function SelectBoard({ issueId, tocs, candidates, confirmed }: Props) {
                   <span className="badge gray">적합성 {c.fit_score ?? "-"}/5</span>
                   {c.duplicate_warning === 1 && (
                     <span className="badge amber">
-                      <TriangleAlert size={11} strokeWidth={2} aria-hidden />
+                      <Icon as={TriangleAlert} size="sm" />
                       유사 내용 주의
                     </span>
                   )}
                   <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
-                    <Users size={12} strokeWidth={1.75} aria-hidden />
+                    <Icon as={Users} size="sm" />
                     {c.name}
                   </span>
                   <span>{c.student_type || "-"}</span>
@@ -221,7 +223,7 @@ export function SelectBoard({ issueId, tocs, candidates, confirmed }: Props) {
 
                 {c.reason && (
                   <div className="c-reason">
-                    <Sparkles size={12} strokeWidth={1.75} aria-hidden style={{ marginRight: 4 }} />
+                    <Icon as={Sparkles} size="sm" style={{ marginRight: 4 }} />
                     {c.reason}
                   </div>
                 )}

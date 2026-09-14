@@ -28,7 +28,7 @@ export function EvaluationPanel({ evaluations }: { evaluations: Evaluation[] }) 
   return (
     <div className="card">
       <div className="section-title" style={{ margin: "0 0 10px" }}>
-        평가 · 용역비
+        평가와 용역비
       </div>
       {evaluations.map((e) => (
         <div key={e.id} style={{ paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--border)" }}>

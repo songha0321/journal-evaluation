@@ -1,89 +1,32 @@
-"use client";
-
-import { useState } from "react";
-import Link from "next/link";
+import { DataTable } from "@/components/ui/DataTable";
 import type { EvaluationRow } from "@/lib/queries/evaluations";
-import { isSelected, toFiveScale, formatWon, cohortLabel } from "@/lib/format";
-import { SelectBadge } from "./ScoreBadge";
-import { StubButton } from "./StubButton";
+import { cohortLabel } from "@/lib/format";
 
-/**
- * 평가/선별 비교표. 최종선택은 1차에서 in-memory (selections 테이블 영속화는 다음 차수).
- */
+/** 작성자 평가 비교표. 선별 여부는 4점(80점) 기준(EVALUATION.md)이며 여기서는 열람만 한다. */
 export function EvaluationSelectionTable({ rows }: { rows: EvaluationRow[] }) {
-  // 기본 선택 = AI 선별 기준(4점↑) 충족 행.
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(rows.filter((r) => isSelected(r.total_score)).map((r) => r.evaluation_id)),
-  );
-
-  function toggle(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
+  const tableRows = rows.map((r) => ({
+    ...r,
+    name_href: `/data/authors/${r.author_id}`,
+    cohort_label: cohortLabel(r.cohort),
+    total_score_sel: r.total_score,
+  }));
   return (
-    <>
-      <div className="toolbar" style={{ justifyContent: "space-between" }}>
-        <div className="muted">
-          최종 선택 <strong>{selected.size}</strong> / {rows.length}건
-        </div>
-        <StubButton
-          label="최종 선별 확정"
-          primary
-          note="선택 결과를 selections에 저장하고 탈고로 넘기는 기능은 다음 차수에서 제공됩니다."
-        />
-      </div>
-      <div className="table-wrap">
-        <table className="data">
-          <thead>
-            <tr>
-              <th style={{ width: 36 }}></th>
-              <th>이름</th>
-              <th>기수</th>
-              <th>유형</th>
-              <th>최종대학</th>
-              <th className="num">점수</th>
-              <th>선별</th>
-              <th>평가 사유</th>
-              <th className="num">용역비</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.evaluation_id}>
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={selected.has(r.evaluation_id)}
-                    onChange={() => toggle(r.evaluation_id)}
-                    aria-label={`${r.name} 선택`}
-                  />
-                </td>
-                <td>
-                  <Link href={`/essays/${r.author_id}`} className="row-link">
-                    {r.name}
-                  </Link>
-                </td>
-                <td>{cohortLabel(r.cohort)}</td>
-                <td>{r.student_type ?? "-"}</td>
-                <td>{r.final_university ?? "-"}</td>
-                <td className="num">{toFiveScale(r.total_score)}점</td>
-                <td>
-                  <SelectBadge totalScore={r.total_score} />
-                </td>
-                <td style={{ whiteSpace: "normal", maxWidth: 360 }} className="muted">
-                  {r.evaluation_summary ?? "-"}
-                </td>
-                <td className="num">{formatWon(r.scholarship_amount)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
+    <DataTable
+      rowKey="evaluation_id"
+      rows={tableRows}
+      empty="평가 내역이 없습니다."
+      defaultSort={{ key: "total_score", dir: "desc" }}
+      columns={[
+        { key: "name", label: "이름", type: "link", width: 110 },
+        { key: "cohort_label", label: "기수", sortKey: "cohort", width: 70 },
+        { key: "student_type", label: "유형", width: 90 },
+        { key: "final_university", label: "최종대학", type: "clip", maxWidth: 200 },
+        { key: "total_score", label: "점수", type: "score", width: 80, align: "right" },
+        { key: "total_score_sel", label: "선별", type: "select", sortKey: "total_score", width: 70 },
+        { key: "ai_suspicion_level", label: "AI 의심", type: "badge", badgeKind: "suspicion", width: 90 },
+        { key: "evaluation_summary", label: "평가 사유", type: "clip", flex: true },
+        { key: "scholarship_amount", label: "용역비", type: "won", width: 120 },
+      ]}
+    />
   );
 }
