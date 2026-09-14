@@ -223,7 +223,10 @@ def cmd_load(args) -> int:
         if p.get("subtitle"):
             title = f"{title} - {p['subtitle']}" if title else p["subtitle"]
 
-        dup = by_hash.get(p["content_hash"], [])
+        # 해시가 같아도 저자가 다르면 남의 행이다. 저자 일치까지 확인한다
+        # (이 가드가 없으면 다른 학생 행에 메타데이터를 덮어쓴다).
+        dup = [e for e in by_hash.get(p["content_hash"], [])
+               if e["author_id"] == author["id"]]
         # 해시가 어긋나도 같은 저자·같은 Part면 같은 꼭지의 다른 판본이다.
         # 실제로 기존 402행 중 24건은 comment가 본문 앞에 붙어 있었다(7월 적재분).
         key = (author["id"], p.get("part_no"), nn(p.get("part_title") or ""))

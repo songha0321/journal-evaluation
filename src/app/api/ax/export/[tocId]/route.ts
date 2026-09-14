@@ -26,11 +26,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ tocId: string }
   const mss = await listManuscriptsByToc(tocId);
   if (mss.length === 0) return new Response("확정된 원고가 없습니다.", { status: 409 });
 
-  const notFinal = mss.filter((m) => m.status !== "final").length;
-  if (notFinal > 0) {
-    return new Response(`아직 확정되지 않은 원고가 ${notFinal}건 있습니다. ‘원고 확정’ 후 다운로드하세요.`, {
-      status: 409,
-    });
+  // '원고 확정'(S5)을 거치지 않으면 다운로드를 열지 않는다.
+  if (!toc.finalized_at) {
+    const notFinal = mss.filter((m) => m.status !== "final").length;
+    return new Response(
+      notFinal > 0
+        ? `아직 확정되지 않은 원고가 ${notFinal}건 있습니다. ‘원고 확정’ 후 다운로드하세요.`
+        : "‘원고 확정’ 버튼을 먼저 눌러주세요.",
+      { status: 409 },
+    );
   }
 
   const parts = mss.map((m) => {

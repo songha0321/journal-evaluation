@@ -92,7 +92,10 @@ class Piece:
 
 # ── PDF → 라인 ────────────────────────────────────────────────────────────
 
-FURNITURE = re.compile(r"\.indd|^\d{4}/\d{1,2}/\d{1,2}|^Part\s*\d+$|^\d{1,3}$")
+FURNITURE = re.compile(r"^\d{4}/\d{1,2}/\d{1,2}|^Part\s*\d+$|^\d{1,3}$")
+# 인쇄용 슬러그(파일명.indd + 쪽번호)와 러닝헤더. 슬러그는 앞쪽 글자가 깨져 나오는
+# 경우가 많아 앞에서부터 매칭하면 안 되고 포함 여부로 봐야 한다.
+FURNITURE_ANY = re.compile(r"\.indd|^SDIJ\s*N?\s*항해일지$|^항해일지\s*航海日誌$")
 
 
 def read_lines(pdf: Path, spread: bool) -> list[Line]:
@@ -108,7 +111,7 @@ def read_lines(pdf: Path, spread: bool) -> list[Line]:
                 continue
             words = [html.unescape(w) for w in re.findall(r"<word[^>]*>(.*?)</word>", ln)]
             text = nfc(" ".join(words)).strip()
-            if not text or FURNITURE.match(text):
+            if not text or FURNITURE.match(text) or FURNITURE_ANY.search(text):
                 continue
             x0, x1, y = float(at["xMin"]), float(at["xMax"]), float(at["yMin"])
             out.append(Line(pno, 1 if (spread and x0 > pw / 2) else 0, x0, x1, y, text))
@@ -144,8 +147,12 @@ def join_body(lines: list[Line]) -> str:
 
 RE_SOSOK = re.compile(r"(?P<hall>[가-힣A-Z0-9]*관)\s*(?:[가-힣A-Z0-9]+\s+)?(?P<cls>[가-힣A-Z0-9()]+반)")
 RE_COHORT = re.compile(r"(?P<raw>\d+(?:\s*[,·•]\s*\d+)*)\s*기")
-RE_NAME_INLINE = re.compile(r"^(?:[^,]{0,12},\s*)?(?P<name>[가-힣]{2,4})\s*(?:[·・/(]|\s\|)")
+RE_NAME_INLINE = re.compile(r"^(?:[^,]{0,12},\s*)?(?P<name>[가-힣]{2,4})\s*(?:[·・•∙/(]|\s[|｜])")
 RE_NAME_ONLY = re.compile(r"^[가-힣]{2,4}$")
+# 이름 자리에 오는 신분·구분 표기. '재수 | 브릿지관 D반 | 시대N 5기'처럼 생겨서
+# 그대로 두면 이름으로 잡히고, 진짜 이름(윗줄)을 놓친다.
+NOT_A_NAME = {"재수", "삼반수", "사반수", "반수", "현역", "재종", "졸업생",
+              "정시", "수시", "논술", "면접", "수능", "우수자", "인문", "자연"}
 RE_UNIV = re.compile(r"^\S*(?:대|대학교)\s?\S*(?:과|학부|계열|학과)?$")
 RE_TRACK = re.compile(r"(성적우수자?|성적향상자?|우선선발|포레스트|졸업생)")
 RE_COMMENT = re.compile(r"^항해일지팀?\s*comment", re.I)
@@ -333,7 +340,7 @@ def assemble(lines: list[Line], source_name: str) -> list[Piece]:
                     source_page=ln.page, header_raw=ln.text)
 
         mn = RE_NAME_INLINE.match(ln.text)
-        if mn:
+        if mn and mn["name"] not in NOT_A_NAME:
             cur.author_name = mn["name"]
         mc = RE_COHORT.search(ln.text)
         if not mc:      # '박진혁 · N관 W반' 다음 줄에 '시대N 8기 성적우수자'
@@ -361,7 +368,7 @@ def assemble(lines: list[Line], source_name: str) -> list[Piece]:
                     continue
                 if len(t) > 40:      # 본문 줄은 건너뛴다
                     continue
-                if RE_NAME_ONLY.fullmatch(t):
+                if RE_NAME_ONLY.fullmatch(t) and t not in NOT_A_NAME:
                     cur.author_name = t
                     consumed.add(j)
                     if buf and buf[-1] is ordered[j]:
@@ -378,7 +385,7 @@ def assemble(lines: list[Line], source_name: str) -> list[Piece]:
                 nx = ordered[j]
                 if nx.page != ln.page or nx.half != ln.half or nx.y - ln.y > 45:
                     break
-                if RE_NAME_ONLY.fullmatch(nx.text):
+                if RE_NAME_ONLY.fullmatch(nx.text) and nx.text not in NOT_A_NAME:
                     cur.author_name = nx.text
                     consumed.add(j)
                     break

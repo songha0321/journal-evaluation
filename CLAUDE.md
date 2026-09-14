@@ -222,7 +222,7 @@ Notes:
 
 ### 4. Articles
 
-Represents edited or publishable manuscripts. **Deployed schema:**
+과거 호차에 **실제로 게재된 원고**의 정본이자, 앞으로 만들 원고의 그릇. 1행 = 지면의 꼭지 1개(학생 1명의 글 1편). **Deployed schema (after migration 0012):**
 
 ```txt
 id               TEXT PK, default 'article_' || hex(randomblob(8))
@@ -231,19 +231,47 @@ submission_id    TEXT           FK → submissions(id) ON DELETE SET NULL
 title            TEXT
 draft_content    TEXT
 edited_content   TEXT
-final_content    TEXT
+final_content    TEXT           -- 게재 본문. 적재분은 여기만 채운다
 article_status   TEXT NOT NULL DEFAULT 'draft'
                  CHECK IN ('draft','editing','review','final','published','archived')
 editor_name      TEXT
 editor_note      TEXT
 created_at, updated_at, published_at TEXT
+-- added by 0012 (게재 위치)
+issue_id         TEXT           -- ax_issue(id). 역대 호차도 ax_issue에 행으로 있다
+issue_label      TEXT           -- '2026 항해일지 5호차' (비정규 백업)
+part_no          INTEGER
+chapter_no       INTEGER
+part_title       TEXT           -- 목차명만 ('마음가짐')
+section          TEXT           -- '좌절 파트' 같은 구획
+subtitle         TEXT           -- 소제목 / '#국어' 과목 태그
+-- added by 0012 (게재 원고 고유 정보 — 수기 원본에는 없다)
+comment          TEXT           -- 항해일지팀 comment
+hanmadi          TEXT           -- 목차 리드문
+focus_json       TEXT           -- 공부몰입도 시계열 JSON
+-- added by 0012 (지면 표기)
+author_name, hall, class_name, university, epithet TEXT
+-- added by 0012 (원본 추적·중복 판정)
+qna_id           TEXT           -- 원본 수기 답변. SELECTION.md L1
+content_hash     TEXT           -- 공백·문장부호 제거 후 SHA1. SELECTION.md L2
+source_file      TEXT
+source_type      TEXT           -- 'docx' | 'pdf' | 'ocr'
+source_page      INTEGER
+source_order     INTEGER
+char_count       INTEGER
 ```
+
+인덱스: `UNIQUE(source_file, source_order)`, `(issue_id, part_no, chapter_no, source_order)`, `(content_hash)`, `(qna_id)`.
 
 Notes:
 
 * **Three content fields** (`draft_content` / `edited_content` / `final_content`) preserve editorial history — do not collapse into a single `body`.
 * Status enum is `final`, not `complete`, and field name is `article_status` (not `status`) — the `submissions.status` shares no enum.
 * Single `editor_note` (singular), single `editor_name`.
+* **`comment`은 `articles`가 갖는 고유 자산이다.** 수기 원본(`qna`)에도 `ax_manuscript`에도 없는, 편집부가 지면에 쓴 실제 문장이다. S4의 comment 생성은 이걸 예시로 써야 톤이 맞는다.
+* **재적재는 `UNIQUE(source_file, source_order)` 위의 UPSERT로 멱등**이다. 같은 파일을 몇 번 돌려도 행이 늘지 않는다. `source_file`이 NULL인 기존 행이 있어도 SQLite는 UNIQUE 인덱스에서 NULL을 서로 다른 값으로 보므로 충돌하지 않는다.
+* **본문 정본 우선순위: docx > pdf > ocr.** 인쇄 PDF는 줄바꿈 자리의 공백이 복원 불가라(한국어는 어절 중간에서도 줄이 바뀐다) `--source-type docx`일 때만 기존 본문을 덮어쓴다.
+* 적재 파이프라인은 `scripts/parse_final_docx.py`(docx) · `scripts/parse_print_pdf.py`(텍스트 PDF) · `scripts/ocr_print_pdf.py`+`scripts/ocr_page.swift`(아웃라인 PDF OCR) → `scripts/load_articles.py`. 원본은 `archive/`(gitignore). 자세한 함정은 PROCESS.md §5-1.
 
 ---
 

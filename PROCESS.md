@@ -30,6 +30,8 @@
 
 **기수 준비율** = `평가 완료 author 수 / 전체 author 수` (기수별로 계산)
 
+> 기수 범위: D1의 `authors`는 5·7·8·9기다. **6기는 항해일지 발간 자체가 없고**, 3·4기(2021·2022 항해일지)는 수기 원본이 D1에 없어 게재 원고도 적재하지 않는다.
+
 ---
 
 ## 3. 트랙 B — 원고 제작 6단계 ★ 진행 단계의 본체
@@ -135,20 +137,19 @@ S1 목차 입력 → S2 AI 수기 선별 → S3 편집자 수기 확정 → S4 A
 
 ---
 
-## 5. 필요한 스키마 변경 (migration `0010_ax_progress.sql`)
+## 5. 스키마 (적용 완료)
 
-현 스키마로는 **S1의 질문 승인 부분·S2·S6과 검수 필요 플래그를 판정할 수 없다.** S3·S4·S5는 지금 데이터로 즉시 계산 가능하다.
+> 이 절은 원래 `0010_ax_progress.sql`이라는 **계획**이었으나, 실제로는 다른 형태로 적용됐다.
+> 선별 단위가 작성자 → qna 행으로 바뀌면서 컬럼 몇 개를 더하는 대신 AX 테이블을 재구축했다.
+> 아래가 현재 D1에 적용된 실제 상태다.
 
-```sql
--- 목차 단위 단계 판정용
-ALTER TABLE ax_toc ADD COLUMN approved_question_ids TEXT;   -- S1: 승인 질문 id JSON 배열
-ALTER TABLE ax_toc ADD COLUMN shortlisted_at TEXT;          -- S2: AI 수기 선별 실행 시각
-ALTER TABLE ax_toc ADD COLUMN exported_at TEXT;             -- S6: 최종 docx export 시각
+| 마이그레이션 | 내용 |
+| --- | --- |
+| `0010_ax_issue_and_qna_selection.sql` | AX 테이블 전면 재구축. `ax_issue`(호차) 신설로 Project > **Issue** > Toc 위계가 됨. 선별 단위가 `UNIQUE(qna_id)`로 바뀌어 "같은 학생의 다른 답변은 다른 목차에 실릴 수 있다"가 표현된다. 단계 판정 컬럼(`shortlisted_at`·`confirmed_at`·`finalized_at`·`exported_at`)과 `needs_review`·`review_note`도 여기서 들어갔다. |
+| `0011_ax_job_queue.sql` | AI 작업 큐. 배포된 Worker는 V8 isolate라 CLI를 못 돌리므로 요청만 D1에 적고, 맥에서 도는 `scripts/ax-runner.mjs`가 가져가 처리한다. `shortlist_status`(목차 단위)·`revise_status`(원고 단위)·`ax_runner` 생존 신호. |
+| `0012_articles_publication.sql` | `articles`를 **게재 원고 정본**으로 확장. 호차(`issue_id`)·Part 구조·`comment`·`hall`/`class_name`·`content_hash`·출처 추적(`source_file`/`source_type`/`source_order`) 등 22컬럼과 `UNIQUE(source_file, source_order)`. 역대 인쇄본·최종원고 적재용. |
 
--- 검수 필요 플래그 (단계가 아닌 경고)
-ALTER TABLE ax_manuscript ADD COLUMN needs_review INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE ax_manuscript ADD COLUMN review_note TEXT;
-```
+**계획과 달라진 것 하나**: S1의 질문 승인은 `ax_toc.approved_question_ids` 컬럼으로 만들지 않았다. 아직 쓰기 경로가 없으므로 §3.1의 S1 완료 조건은 현재 `toc_content`·`hanmadi` 두 개로만 판정된다.
 
 > D1 주의: `ALTER TABLE … ADD COLUMN`은 재실행 시 `duplicate column` 에러가 난다. 마이그레이션은 1회만 적용하고, 트랜잭션(`BEGIN`/`COMMIT`)은 쓰지 않는다.
 
@@ -156,15 +157,34 @@ ALTER TABLE ax_manuscript ADD COLUMN review_note TEXT;
 
 ---
 
-## 6. 구현 순서
+## 5-1. 게재 원고 아카이브 (트랙 A·B의 공통 자산)
 
-| 순서 | 작업 | 비고 |
+역대 항해일지에 **실제로 실린 원고**는 `articles`에 있다(2026-09-07 기준 679행). 원본은 `archive/`(gitignore, 500MB+).
+
+| 연도(기수) | 호차 | 행 | 출처 |
+| --- | --- | --- | --- |
+| 2023(5기) | 1·2·3·4·Final | 136 | 인쇄본 PDF(일부 OCR) |
+| 2025(7기) | 1·2·3 | 45 | 인쇄본 PDF(일부 OCR) |
+| 2026(8기) | 1·3·4·5 | 84 | 인쇄본 PDF(일부 OCR) |
+| 2027(9기) | 1·2 | 79 | 최종원고 docx |
+| — | 호차 미상 | 332 | 2026-07~08 적재분 |
+
+- **연도 ↔ 기수 = 연도 − 2018.** 2024(6기)는 발간이 없고, 2021·2022(3·4기)는 `authors`에 학생이 없어 적재 대상에서 제외한다(`authors.cohort CHECK(cohort >= 5)`).
+- 이 데이터의 쓸모는 두 가지다. ① `articles.comment` 127건 = S4 comment 생성의 실제 지면 예시. ② `articles.qna_id`를 채우면 SELECTION.md §2 L1(동일 답변 재게재 차단)이 **과거 게재분까지** 커버한다. 지금은 `qna_id`가 비어 있어 과거 게재 이력이 선별에 반영되지 않는다.
+
+---
+
+## 6. 구현 순서 (현황)
+
+| 순서 | 작업 | 상태 |
 | --- | --- | --- |
-| 1 | `migrations/0010_ax_progress.sql` 적용 | 위 5개 컬럼 |
-| 2 | `src/lib/ax-progress.ts` — 6단계 정의·가중치·진행률 계산을 한 파일에 집약 | 단일 소스. UI/API가 각자 계산하지 않게 함 |
-| 3 | `src/lib/queries/ax-progress.ts` — 목차별 집계 쿼리 1개 | 목차당 1행, 원고 카운트는 서브쿼리 |
-| 4 | `StageStepper` 컴포넌트 → 목차 상세페이지 상단 | 6단계 스테퍼 |
-| 5 | 대시보드에 퍼널 + 목차별 진행 테이블 추가 | `src/app/dashboard/page.tsx` |
-| 6 | 기존 화면에 단계 기록 쓰기 경로 연결 | 선별 실행→`shortlisted_at`, export→`exported_at`, 질문 승인 UI→`approved_question_ids` |
+| 1 | 스키마 적용 | ✅ `0010`·`0011`·`0012` 적용 완료(§5) |
+| 2 | `src/lib/ax-progress.ts` — 6단계 정의·가중치·진행률 계산 | ✅ 있음. 단일 소스 유지 |
+| 3 | `src/lib/queries/ax-progress.ts` — 목차별 집계 쿼리 | ❌ 없음(쿼리 파일은 articles·dashboard·essays·evaluations 4개뿐) |
+| 4 | `StageStepper` → 목차 상세페이지 상단 | ✅ `src/components/ax/StageStepper.tsx` |
+| 5 | 대시보드 퍼널 + 목차별 진행 테이블 | ❌ 없음 |
+| 6 | 단계 기록 쓰기 경로 | 🟡 선별→`shortlisted_at`(러너), export→`exported_at`(API)는 연결됨. 질문 승인 UI·`approved_question_ids`는 미구현 |
 
 6번을 빼먹으면 S1·S2·S6이 영원히 미완료로 남는다. 스키마만 추가하고 쓰기 경로를 안 붙이는 게 가장 흔한 실패다.
+
+**현재 실데이터**: 호차 1개(2027 1호차) · 목차 1개(`toc_test01` "상반기 공부법") · 후보 60 · 확정 원고 3건. 3건 모두 `revise_status='done'`이고 `edited_text`·`revision_json`은 있으나 **`subtitle`·`comment`가 비어 있어 S4 완료 조건을 못 넘긴다**(소제목·comment 생성 코드가 들어가기 전 버전의 러너로 돌린 결과). 러너 최신본으로 재실행이 필요하다.

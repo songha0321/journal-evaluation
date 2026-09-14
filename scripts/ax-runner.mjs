@@ -63,6 +63,29 @@ const SYS = `당신은 시대인재 <항해일지> 편집국의 수기 선별 �
 
 confidence — high: 탈고만 하면 바로 게재 가능 / medium: 부분 발췌·보완 필요 / low: 관련은 있으나 근거 약함.`;
 
+const REVISE_SYS = `당신은 시대인재 <항해일지> 편집국의 탈고 에이전트다. 기준 문서는 REVISE.md다.
+
+[대원칙]
+원문의 의미·경험·문체를 최대한 보존한다. 창의적 재작성 금지. 원문에 없는 사실 추가 금지.
+학생의 경험과 표현 의도는 지우지 않는다.
+
+[교정 종류] — 각 교정은 아래 하나로 분류한다.
+ typo      오탈자·띄어쓰기·맞춤법 (국립국어원 기준)
+ sensitive 민감 표현. 빌보드 언급, 난이도 자만, 성적 과시, 타사 콘텐츠·학원·강사명,
+           독자에게 박탈감을 주는 표현 → 삭제 또는 완화
+ term      용어 통일. 시험명·과목명·콘텐츠명·학습 시스템 용어
+ structure 문장 삭제 또는 추가가 필요한 경우
+ flow      불필요한 수식어·보조사·쉼표·수동태·반복 문장 정리
+
+[출력]
+아래 형태의 JSON 객체만 출력한다. 설명 문장을 덧붙이지 않는다.
+{"edits":[{"kind":"typo","before":"<원문에 그대로 있는 구간>","after":"<고친 결과>","note":"<사유 한 줄>"}],
+ "subtitle":"<25자 이내 소제목>",
+ "comment":"<2~3줄. 담담하고 차분한 격식체. '살펴봅시다·확인해봅시다·점검해봅시다·참고해봅시다' 계열 종결 우선. 과장·압박·원문에 없는 성과 금지>"}
+
+before는 원문에 문자 그대로 존재해야 한다(앞뒤 공백 포함해 정확히). 찾을 수 없는 문자열을 쓰면 그 교정은 버려진다.
+고칠 것이 없으면 edits는 빈 배열로 둔다.`;
+
 /* ─────────────────────────────────────────────────────────── 러너 상태 */
 
 async function heartbeat(status, note) {
@@ -258,27 +281,133 @@ async function shortlist(toc) {
   log(`✔ 완료: ${label} — 후보 ${values.length - excluded}건 / 중복 제외 ${excluded}건`);
 }
 
+/* ─────────────────────────────────────────────────────────── 탈고 */
+
+/** 승인된 교정만 원문에 반영. src/lib/revision.ts의 applyEdits와 같은 규칙이다. */
+function applyEdits(original, edits) {
+  let out = original;
+  for (const e of edits) {
+    if (!e.applied || !e.before) continue;
+    const i = out.indexOf(e.before);
+    if (i < 0) continue;
+    out = out.slice(0, i) + e.after + out.slice(i + e.before.length);
+  }
+  return out;
+}
+
+/**
+ * 폴백 교정 — LLM 없이도 확실히 옳은 것만 건드린다.
+ * 규칙은 실제 15,054행 qna를 실측해 선정했다(적용 건수 = 해당 패턴을 포함한 답변 수):
+ *   연속 공백 595 · 구어체 웃음(ㅋㅋ/ㅎㅎ) 98 · 반복 감탄부호 122 · 문장부호 앞 공백 31
+ * 의미를 바꾸는 교정은 하지 않는다. 그건 LLM 연결 후의 일이다.
+ */
+const FALLBACK_RULES = [
+  { re: /[ \t]{2,}/g, to: () => " ", kind: "flow", note: "연속 공백 정리" },
+  { re: /\n{3,}/g, to: () => "\n\n", kind: "flow", note: "과다 줄바꿈 정리" },
+  { re: /\s+([,.!?])/g, to: (m) => m.trim(), kind: "typo", note: "문장부호 앞 공백 제거" },
+  { re: /(ㅋ{2,}|ㅎ{2,})/g, to: () => "", kind: "sensitive", note: "구어체 웃음 표현 삭제 (원고 문체 통일)" },
+  { re: /([!?~])\1{1,}/g, to: (m) => m[0], kind: "flow", note: "반복 감탄·물결 부호 축약" },
+];
+
+const FALLBACK_MAX = 40;
+
+function fallbackEdits(text) {
+  const edits = [];
+  const seen = new Set();
+  let n = 0;
+  for (const rule of FALLBACK_RULES) {
+    for (const m of text.matchAll(rule.re)) {
+      if (edits.length >= FALLBACK_MAX) return edits;
+      const before = m[0];
+      // 같은 문자열이 여러 번 나오면 교정 1건으로 합친다(applyEdits는 첫 일치를 고친다).
+      if (seen.has(before)) continue;
+      seen.add(before);
+      const after = rule.to(before);
+      if (after === before) continue;
+      edits.push({
+        id: `f${++n}`,
+        kind: rule.kind,
+        before,
+        after,
+        note: `${rule.note} (LLM 미연결 — 규칙 기반)`,
+        applied: true,
+      });
+    }
+  }
+  return edits;
+}
+
+async function revise(ms) {
+  log(`▶ 탈고 시작: ${ms.name} — ${String(ms.question_text).slice(0, 24)}…`);
+  await db.exec(`UPDATE ax_manuscript SET revise_status='running', revise_error=NULL WHERE id=${q(ms.id)};`);
+  await heartbeat("working", `탈고: ${ms.name}`);
+
+  const original = String(ms.answer_text ?? "");
+  if (!original.trim()) throw new Error("원문이 비어 있습니다.");
+
+  const out = await callJson(
+    REVISE_SYS,
+    `[학생] ${ms.name} (${ms.final_university || "대학 미입력"})\n[질문] ${ms.question_text}\n\n[원문]\n${original}`,
+    { timeoutMs: 240000 },
+  );
+
+  let edits = [];
+  let subtitle = "";
+  let comment = "";
+
+  if (out && typeof out === "object" && Array.isArray(out.edits)) {
+    edits = out.edits
+      // before가 원문에 없으면 적용 자체가 불가능하다. 저장 전에 버린다.
+      .filter((e) => e && typeof e.before === "string" && e.before && original.includes(e.before))
+      .map((e, i) => ({
+        id: `e${i + 1}`,
+        kind: ["typo", "sensitive", "term", "structure", "flow"].includes(e.kind) ? e.kind : "flow",
+        before: e.before,
+        after: typeof e.after === "string" ? e.after : "",
+        note: e.note ?? "",
+        applied: true,
+      }));
+    subtitle = String(out.subtitle ?? "").replace(/\n/g, " ").slice(0, 25);
+    comment = String(out.comment ?? "").trim();
+  } else {
+    edits = fallbackEdits(original);
+    subtitle = "";
+    comment = "";
+  }
+
+  const editedText = applyEdits(original, edits);
+
+  await db.exec(
+    `UPDATE ax_manuscript
+        SET revision_json = ${q(JSON.stringify(edits))},
+            edited_text   = ${q(editedText)},
+            subtitle      = CASE WHEN ${q(subtitle)} = '' THEN subtitle ELSE ${q(subtitle)} END,
+            comment       = CASE WHEN ${q(comment)} = '' THEN comment  ELSE ${q(comment)} END,
+            status        = CASE WHEN status = 'final' THEN 'final' ELSE 'edited' END,
+            revise_status = 'done',
+            updated_at    = CURRENT_TIMESTAMP
+      WHERE id = ${q(ms.id)};`,
+  );
+
+  log(`✔ 탈고 완료: ${ms.name} — 교정 ${edits.length}건${subtitle ? ` · 소제목 "${subtitle}"` : ""}`);
+}
+
 /* ─────────────────────────────────────────────────────────── 큐 루프 */
 
-async function drain() {
-  const where = FORCE_TOC
-    ? `t.id = ${q(FORCE_TOC)}`
-    : `t.shortlist_status = 'queued'`;
+async function drainShortlist() {
+  const where = FORCE_TOC ? `t.id = ${q(FORCE_TOC)}` : `t.shortlist_status = 'queued'`;
   const jobs = await db.query(
     `SELECT t.id, t.title, t.part_no, t.chapter_no, t.toc_content, t.select_count, i.cohort
        FROM ax_toc t JOIN ax_issue i ON i.id = t.issue_id
       WHERE ${where}
       ORDER BY t.shortlist_requested_at, t.part_no, t.chapter_no;`,
   );
-  if (jobs.length === 0) return 0;
-
-  log(`큐에 ${jobs.length}건`);
   for (const toc of jobs) {
     try {
       await shortlist(toc);
     } catch (e) {
       const msg = e?.message ?? String(e);
-      log(`✖ 실패: ${toc.title} — ${msg}`);
+      log(`✖ 선별 실패: ${toc.title} — ${msg}`);
       await db.exec(
         `UPDATE ax_toc SET shortlist_status='error', shortlist_error=${q(msg.slice(0, 500))},
                 shortlist_progress=NULL WHERE id=${q(toc.id)};`,
@@ -286,6 +415,37 @@ async function drain() {
     }
   }
   return jobs.length;
+}
+
+async function drainRevise() {
+  const jobs = await db.query(
+    `SELECT m.id, a.answer_text, q2.question_text, au.name, au.final_university
+       FROM ax_manuscript m
+       JOIN qna a        ON a.id = m.qna_id
+       JOIN questions q2 ON q2.id = a.question_id
+       JOIN authors au   ON au.id = m.author_id
+      WHERE m.revise_status = 'queued'
+      ORDER BY m.revise_requested_at;`,
+  );
+  for (const ms of jobs) {
+    try {
+      await revise(ms);
+    } catch (e) {
+      const msg = e?.message ?? String(e);
+      log(`✖ 탈고 실패: ${ms.name} — ${msg}`);
+      await db.exec(
+        `UPDATE ax_manuscript SET revise_status='error', revise_error=${q(msg.slice(0, 500))} WHERE id=${q(ms.id)};`,
+      );
+    }
+  }
+  return jobs.length;
+}
+
+async function drain() {
+  const a = await drainShortlist();
+  const b = FORCE_TOC ? 0 : await drainRevise();
+  if (a + b > 0) log(`큐 처리: 선별 ${a}건 · 탈고 ${b}건`);
+  return a + b;
 }
 
 async function main() {
