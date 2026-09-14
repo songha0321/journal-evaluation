@@ -4,6 +4,9 @@ import { DataTable } from "@/components/ui/DataTable";
 import { listQuestions, listCohorts } from "@/lib/queries/data";
 import { cohortLabel } from "@/lib/format";
 
+import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { Locked } from "@/components/ui/Locked";
+
 export const dynamic = "force-dynamic";
 
 export default async function QuestionsPage({
@@ -11,6 +14,7 @@ export default async function QuestionsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  if (!isAdmin(await getCurrentUser())) return <Locked title="수기 질문지 DB" />;
   const sp = await searchParams;
   const cohort = sp.cohort ? Number(sp.cohort) : undefined;
   const [rows, cohorts] = await Promise.all([listQuestions(cohort), listCohorts()]);

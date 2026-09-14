@@ -4,9 +4,9 @@ import { getCurrentUser, isAuthConfigured } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 const ERRORS: Record<string, string> = {
-  unauthorized: "허가되지 않은 계정입니다. 운영관리자에게 계정 등록을 요청하세요.",
+  unauthorized: "허가되지 않은 계정입니다. 관리자에게 계정 등록을 요청하세요.",
   oauth: "Google 인증에 실패했습니다. 다시 시도해 주세요.",
-  config: "로그인 설정이 아직 완료되지 않았습니다. 운영관리자에게 문의하세요.",
+  config: "로그인 설정이 아직 완료되지 않았습니다. 관리자에게 문의하세요.",
 };
 
 function GoogleMark() {

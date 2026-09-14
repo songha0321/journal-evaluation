@@ -11,7 +11,11 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
  *   AUTH_ORIGIN(선택, 콜백 origin 강제) · AUTH_DEV_BYPASS=1(로컬 전용, 로그인 생략)
  */
 
-export type Role = "원고작업자" | "운영관리자" | "디자인검수자";
+export type Role = "관리자" | "편집자";
+
+export function isAdmin(user: { role: Role } | null | undefined): boolean {
+  return user?.role === "관리자";
+}
 
 export interface CurrentUser {
   id: string;
@@ -76,6 +80,10 @@ export async function verifySession(token: string | undefined, secret: string): 
     const data = JSON.parse(b64urlDecode(payload)) as CurrentUser & { exp: number };
     if (!data.exp || data.exp < Date.now() / 1000) return null;
     const { exp: _exp, ...user } = data;
+    // 0017 이전 쿠키 호환
+    const legacy = user.role as string;
+    if (legacy === "운영관리자") user.role = "관리자";
+    else if (legacy !== "관리자") user.role = "편집자";
     return user;
   } catch {
     return null;
@@ -88,7 +96,7 @@ export function sessionCookieOptions(secure: boolean) {
 
 /* ── 현재 사용자 ─────────────────────────────────────────────── */
 
-const DEV_USER: CurrentUser = { id: "dev-bypass", email: "dev@local", name: "로컬 개발자", role: "운영관리자" };
+const DEV_USER: CurrentUser = { id: "dev-bypass", email: "dev@local", name: "로컬 개발자", role: "관리자" };
 
 /** 세션 쿠키를 검증해 현재 사용자를 돌려준다. 없거나 깨졌으면 null. */
 export async function getCurrentUser(): Promise<CurrentUser | null> {

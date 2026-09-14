@@ -4,6 +4,9 @@ import { DataTable } from "@/components/ui/DataTable";
 import { listEssays, getEssayFilterOptions, type EssayFilters } from "@/lib/queries/essays";
 import { cohortLabel } from "@/lib/format";
 
+import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { Locked } from "@/components/ui/Locked";
+
 export const dynamic = "force-dynamic";
 
 export default async function AuthorsPage({
@@ -11,6 +14,7 @@ export default async function AuthorsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  if (!isAdmin(await getCurrentUser())) return <Locked title="작성자 DB" />;
   const sp = await searchParams;
   const filters: EssayFilters = {
     cohort: sp.cohort ? Number(sp.cohort) : undefined,

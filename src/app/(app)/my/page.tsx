@@ -47,7 +47,7 @@ export default async function MyPage() {
 
   return (
     <>
-      <PageHeader title="마이페이지" desc="내 계정 정보. 사진은 Google 계정을 따르고, 이름은 여기서 바꿀 수 있으며, 역할은 운영관리자가 지정합니다" />
+      <PageHeader title="마이페이지" desc="내 계정 정보. 사진은 Google 계정을 따르고, 이름은 여기서 바꿀 수 있으며, 역할은 관리자가 지정합니다" />
       <div className="page-body">
         <div className="my-profile">
           <Avatar name={user.name} picture={user.picture} size={64} />
@@ -73,7 +73,7 @@ export default async function MyPage() {
           </a>
         </div>
         <p className="faint" style={{ fontSize: 12, marginTop: 16 }}>
-          역할 변경이나 계정 추가는 운영관리자에게 요청하세요. 계정은 D1 app_users 테이블에서 관리합니다.
+          역할 변경이나 계정 추가는 관리자에게 요청하세요. 관리자는 사용자 권한 화면에서 바꿀 수 있습니다.
         </p>
       </div>
     </>

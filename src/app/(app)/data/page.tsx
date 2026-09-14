@@ -13,9 +13,13 @@ import {
 import { getCohortReadiness } from "@/lib/queries/data";
 import { cohortLabel, formatWon } from "@/lib/format";
 
+import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { Locked } from "@/components/ui/Locked";
+
 export const dynamic = "force-dynamic";
 
 export default async function DataDashboardPage() {
+  if (!isAdmin(await getCurrentUser())) return <Locked title="데이터 대시보드" />;
   const [totals, cohorts, fees, subRoll, artRoll, suspRoll, readiness] = await Promise.all([
     getTotals(),
     getCohortCounts(),

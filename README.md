@@ -38,9 +38,9 @@ npx wrangler d1 execute sdij-journal --remote --file migrations/0013_app_users.s
 3. **허가 계정 등록** — 원격 D1에 `migrations/0013_app_users.sql` 적용(첫 계정 포함). 추가 계정은:
    ```bash
    npx wrangler d1 execute sdij-journal --remote --command \
-     "INSERT INTO app_users (email, name, role) VALUES ('someone@example.com', '이름', '원고작업자')"
+     "INSERT INTO app_users (email, name, role) VALUES ('someone@example.com', '이름', '편집자')"
    ```
-   역할: `원고작업자` · `운영관리자` · `디자인검수자`. 차단은 `is_active = 0`.
+   역할: `관리자`(전체) · `편집자`(원고 관리 + 수기 DB, 기본값). 차단은 `is_active = 0`. 관리자는 `/admin/users` 화면에서 계정 추가·역할 변경·차단을 할 수 있다(GCP 테스트 사용자 등록은 별도).
 
 `AUTH_DEV_BYPASS`는 로컬 `.dev.vars` 전용이다. 프로덕션 secret에 넣지 않는다.
 

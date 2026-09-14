@@ -192,7 +192,7 @@ export function SettingsForm({ user }: { user: CurrentUser }) {
         <div className="set-row">
           <div className="set-label">
             <div className="set-name">로그인 계정</div>
-            <div className="set-desc">이름과 사진은 Google 계정을 따르고, 역할은 운영관리자가 지정합니다.</div>
+            <div className="set-desc">이름과 사진은 Google 계정을 따르고, 역할은 관리자가 지정합니다.</div>
           </div>
           <div className="set-control">
             <div className="toolbar" style={{ margin: 0 }}>

@@ -13,16 +13,18 @@ import {
   ClipboardCheck,
   LogOut,
   Settings,
+  Lock,
+  ShieldCheck,
   ChevronLeft,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
-import type { CurrentUser } from "@/lib/auth";
+import { isAdmin, type CurrentUser } from "@/lib/auth";
 
 /** 사이드바 IA. 아이콘은 Icon 래퍼(DESIGN.md §6.2.3). */
-type NavEntry = { section: string } | { href: string; label: string; Icon: LucideIcon; exact?: boolean };
+type NavEntry = { section: string } | { href: string; label: string; Icon: LucideIcon; exact?: boolean; adminOnly?: boolean };
 
 const NAV: NavEntry[] = [
   { section: "원고 관리" },
@@ -30,13 +32,14 @@ const NAV: NavEntry[] = [
   { href: "/ax/issues", label: "편집 중 항해일지", Icon: FilePen },
   { href: "/ax/published", label: "편집 완료 항해일지", Icon: BookCheck },
   { section: "데이터 관리" },
-  { href: "/data", label: "데이터 대시보드", Icon: Gauge, exact: true },
+  { href: "/data", label: "데이터 대시보드", Icon: Gauge, exact: true, adminOnly: true },
   { href: "/data/qna", label: "수기 DB", Icon: MessagesSquare },
-  { href: "/data/questions", label: "수기 질문지 DB", Icon: CircleHelp },
-  { href: "/data/authors", label: "작성자 DB", Icon: Users },
-  { href: "/data/evaluations", label: "작성자 평가 DB", Icon: ClipboardCheck },
+  { href: "/data/questions", label: "수기 질문지 DB", Icon: CircleHelp, adminOnly: true },
+  { href: "/data/authors", label: "작성자 DB", Icon: Users, adminOnly: true },
+  { href: "/data/evaluations", label: "작성자 평가 DB", Icon: ClipboardCheck, adminOnly: true },
   { section: "설정" },
   { href: "/settings", label: "환경설정", Icon: Settings },
+  { href: "/admin/users", label: "사용자 권한", Icon: ShieldCheck, adminOnly: true },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean): boolean {
@@ -54,6 +57,7 @@ export function SidebarNav({
   onToggle: () => void;
 }) {
   const pathname = usePathname();
+  const admin = isAdmin(user);
   return (
     <aside className="sidebar" style={{ display: "flex", flexDirection: "column" }}>
       <div className="sidebar-top">
@@ -77,6 +81,14 @@ export function SidebarNav({
             <div key={`s-${i}`} className="nav-section">
               <span className="word">{item.section}</span>
             </div>
+          ) : item.adminOnly && !admin ? (
+            item.href === "/admin/users" ? null : (
+              <span key={item.href} className="nav-item locked" title="관리자만 볼 수 있습니다" aria-disabled="true">
+                <Icon as={item.Icon} className="ico" />
+                <span className="word">{item.label}</span>
+                <Icon as={Lock} size="sm" className="nav-lock" />
+              </span>
+            )
           ) : (
             <Link
               key={item.href}

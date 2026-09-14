@@ -1330,3 +1330,11 @@ mark.chg.pending { background: transparent; border-bottom: 2px dashed var(--k); 
 mark.chg .chg-keep { color: inherit; }
 .rev-raw { width: 100%; min-height: 480px; font: inherit; font-size: 15px; line-height: 2; padding: 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); resize: vertical; }
 .rev-hl { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 12px; }
+
+/* ---- 권한 잠금 ---- */
+.nav-item.locked { color: #6f6f6f; cursor: not-allowed; }
+.nav-item.locked .nav-lock { margin-left: auto; color: #6f6f6f; }
+.app-shell.collapsed .nav-item.locked .nav-lock { display: none; }
+.locked-box { display: flex; gap: 16px; align-items: flex-start; max-width: 520px; padding: 20px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); color: var(--text-muted); }
+.locked-box b { color: var(--text); }
+.locked-box p { margin: 4px 0 10px; font-size: 13px; line-height: 1.6; }

@@ -4,6 +4,9 @@ import { EvaluationSelectionTable } from "@/components/EvaluationSelectionTable"
 import { listEvaluations, getEvaluationCohorts } from "@/lib/queries/evaluations";
 import { cohortLabel } from "@/lib/format";
 
+import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { Locked } from "@/components/ui/Locked";
+
 export const dynamic = "force-dynamic";
 
 export default async function EvaluationsPage({
@@ -11,6 +14,7 @@ export default async function EvaluationsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  if (!isAdmin(await getCurrentUser())) return <Locked title="작성자 평가 DB" />;
   const sp = await searchParams;
   const cohort = sp.cohort ? Number(sp.cohort) : undefined;
 

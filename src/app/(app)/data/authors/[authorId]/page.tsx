@@ -12,6 +12,9 @@ import {
 } from "@/lib/queries/essays";
 import { cohortLabel } from "@/lib/format";
 
+import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { Locked } from "@/components/ui/Locked";
+
 export const dynamic = "force-dynamic";
 
 export default async function AuthorDetailPage({
@@ -19,6 +22,7 @@ export default async function AuthorDetailPage({
 }: {
   params: Promise<{ authorId: string }>;
 }) {
+  if (!isAdmin(await getCurrentUser())) return <Locked title="작성자" />;
   const { authorId } = await params;
   const author = await getAuthor(authorId);
   if (!author) notFound();
