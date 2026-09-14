@@ -7,7 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { DataTable } from "@/components/ui/DataTable";
 import { formatEditedAt } from "@/lib/ax-progress";
-import type { AppUserRow } from "@/lib/auth";
+import type { AppUserRow } from "@/lib/roles";
 
 const ROLE_OPTS = [
   { value: "관리자", label: "관리자" },

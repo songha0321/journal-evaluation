@@ -8,7 +8,7 @@ import { Dropdown } from "@/components/ui/Dropdown";
 import { Avatar } from "@/components/ui/Avatar";
 import { PRESETS, DEFAULT_POINT, applyPoint, isHex, palette } from "@/lib/theme";
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type Settings } from "@/lib/settings";
-import type { CurrentUser } from "@/lib/auth";
+import type { CurrentUser } from "@/lib/roles";
 
 const CUSTOM = "__custom";
 

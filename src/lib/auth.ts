@@ -1,5 +1,9 @@
 import { cookies } from "next/headers";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import type { CurrentUser } from "./roles";
+
+export type { Role, CurrentUser, AppUserRow } from "./roles";
+export { isAdmin } from "./roles";
 
 /**
  * 로그인/권한 (PRD FR-001).
@@ -17,13 +21,6 @@ export function isAdmin(user: { role: Role } | null | undefined): boolean {
   return user?.role === "관리자";
 }
 
-export interface CurrentUser {
-  id: string;
-  email: string;
-  name: string;
-  role: Role;
-  picture?: string;
-}
 
 export const SESSION_COOKIE = "hj_session";
 export const STATE_COOKIE = "hj_oauth_state";
@@ -113,13 +110,3 @@ export function randomToken(bytes = 16): string {
   return b64url(u8);
 }
 
-/** app_users 행 (관리자 화면·API 공용) */
-export interface AppUserRow {
-  id: string;
-  email: string;
-  name: string | null;
-  role: Role;
-  is_active: number;
-  last_login_at: string | null;
-  created_at: string | null;
-}

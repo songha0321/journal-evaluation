@@ -5,7 +5,7 @@ import { SidebarNav } from "./SidebarNav";
 import { ScrollTop } from "@/components/ui/ScrollTop";
 import { ThemeInit } from "./ThemeInit";
 import { loadSettings } from "@/lib/settings";
-import type { CurrentUser } from "@/lib/auth";
+import type { CurrentUser } from "@/lib/roles";
 
 const KEY = "hj.sidebar.collapsed";
 

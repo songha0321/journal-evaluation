@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
-import { isAdmin, type CurrentUser } from "@/lib/auth";
+import { isAdmin, type CurrentUser } from "@/lib/roles";
 
 /** 사이드바 IA. 아이콘은 Icon 래퍼(DESIGN.md §6.2.3). */
 type NavEntry = { section: string } | { href: string; label: string; Icon: LucideIcon; exact?: boolean; adminOnly?: boolean };
