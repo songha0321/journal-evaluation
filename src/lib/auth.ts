@@ -15,11 +15,7 @@ export { isAdmin } from "./roles";
  *   AUTH_ORIGIN(선택, 콜백 origin 강제) · AUTH_DEV_BYPASS=1(로컬 전용, 로그인 생략)
  */
 
-export type Role = "관리자" | "편집자";
 
-export function isAdmin(user: { role: Role } | null | undefined): boolean {
-  return user?.role === "관리자";
-}
 
 
 export const SESSION_COOKIE = "hj_session";
