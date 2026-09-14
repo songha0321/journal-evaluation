@@ -80,17 +80,22 @@ export function UsersAdmin({ users, meId }: { users: AppUserRow[]; meId: string 
           {
             key: "role",
             label: "역할",
-            width: 150,
+            width: 200,
             sortable: true,
             render: (u) => (
-              <Dropdown
-                value={u.role}
-                options={ROLE_OPTS}
-                onChange={(v) => call("PATCH", { id: u.id, role: v })}
-                ariaLabel={`${u.email} 역할`}
-                width={130}
-                disabled={busy || u.me}
-              />
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                <span className={`badge ${u.role === "관리자" ? "blue" : "gray"}`}>{u.role}</span>
+                {!u.me && (
+                  <button
+                    type="button"
+                    className="tbl-link"
+                    disabled={busy}
+                    onClick={() => call("PATCH", { id: u.id, role: u.role === "관리자" ? "편집자" : "관리자" })}
+                  >
+                    {u.role === "관리자" ? "편집자로" : "관리자로"}
+                  </button>
+                )}
+              </span>
             ),
           },
           {
