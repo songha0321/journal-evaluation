@@ -2,20 +2,11 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Locked } from "@/components/ui/Locked";
 import { UsersAdmin } from "@/components/admin/UsersAdmin";
-import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { getCurrentUser, isAdmin, type AppUserRow } from "@/lib/auth";
 import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export interface AppUserRow {
-  id: string;
-  email: string;
-  name: string | null;
-  role: "관리자" | "편집자";
-  is_active: number;
-  last_login_at: string | null;
-  created_at: string | null;
-}
 
 export default async function UsersAdminPage() {
   const user = await getCurrentUser();

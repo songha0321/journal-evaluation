@@ -112,3 +112,14 @@ export function randomToken(bytes = 16): string {
   crypto.getRandomValues(u8);
   return b64url(u8);
 }
+
+/** app_users 행 (관리자 화면·API 공용) */
+export interface AppUserRow {
+  id: string;
+  email: string;
+  name: string | null;
+  role: Role;
+  is_active: number;
+  last_login_at: string | null;
+  created_at: string | null;
+}
