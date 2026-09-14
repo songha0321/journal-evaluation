@@ -20,7 +20,8 @@ export default async function PublishedIssuePage({ params }: { params: Promise<{
     where: [a.part_title, a.section].filter(Boolean).join(" / ") || "-",
     subtitle_text: a.subtitle || a.title || "",
     subtitle_text_href: `/ax/published/${issueId}/${a.id}`,
-    student: [a.author_name, a.hall].filter(Boolean).join(" ") || "-",
+    student: a.author_name || "-",
+    hall_text: a.hall || "-",
     university: a.university || "-",
   }));
 
@@ -44,7 +45,8 @@ export default async function PublishedIssuePage({ params }: { params: Promise<{
             { key: "chapter", label: "Chapter", sortKey: "chapter_no", width: 80 },
             { key: "where", label: "목차 / 구획", type: "clip", maxWidth: 220 },
             { key: "subtitle_text", label: "소제목", type: "link", flex: true },
-            { key: "student", label: "학생", width: 130 },
+            { key: "student", label: "학생", width: 90 },
+            { key: "hall_text", label: "관", width: 80 },
             { key: "university", label: "진학", type: "clip", maxWidth: 160 },
             { key: "char_count", label: "글자", type: "number", width: 80 },
             { key: "source_type", label: "원본", type: "muted", width: 70 },

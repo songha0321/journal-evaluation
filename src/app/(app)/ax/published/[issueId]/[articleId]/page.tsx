@@ -32,7 +32,9 @@ export default async function PublishedArticlePage({
         meta={
           <>
             {where && <span className="muted">{where}</span>}
-            <span>{[article.author_name, article.hall, article.class_name].filter(Boolean).join(" ")}</span>
+            <span>{article.author_name}</span>
+            {article.hall && <span className="muted">{article.hall}</span>}
+            {article.class_name && <span className="muted">{article.class_name}</span>}
             {article.university && <span>{article.university}</span>}
             {article.epithet && <span className="muted">{article.epithet}</span>}
             {article.char_count != null && <span>{article.char_count.toLocaleString("ko-KR")}자</span>}

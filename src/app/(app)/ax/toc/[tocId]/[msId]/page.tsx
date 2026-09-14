@@ -3,6 +3,8 @@ import { getManuscript, getToc, tocLabel } from "@/lib/ax";
 import { parseEdits } from "@/lib/revision";
 import { RevisionEditor } from "@/components/ax/RevisionEditor";
 import { Hero } from "@/components/ui/Hero";
+import { listEditComments } from "@/lib/queries/compare";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,7 @@ export default async function ManuscriptEditPage({
   const { tocId, msId } = await params;
   const [ms, toc] = await Promise.all([getManuscript(msId), getToc(tocId)]);
   if (!ms || !toc) notFound();
+  const [comments, user] = await Promise.all([listEditComments(msId), getCurrentUser()]);
 
   let highlights: string[] = [];
   try {
@@ -51,6 +54,8 @@ export default async function ManuscriptEditPage({
         status={ms.status}
         needsReview={ms.needs_review}
         updatedAt={ms.updated_at}
+        comments={comments}
+        userEmail={user?.email ?? ""}
       />
     </>
   );

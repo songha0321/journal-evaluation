@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, RotateCcw, Underline, Save, TriangleAlert, X, Pencil, Eye } from "lucide-react";
+import { Check, RotateCcw, Underline, Save, TriangleAlert, X, Pencil, Eye, MessageSquare, Trash2 } from "lucide-react";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
-import { KIND_META, applyEdits, isStale, type RevisionEdit } from "@/lib/revision";
+import { KIND_META, applyEdits, isStale, type RevisionEdit, type RevisionKind } from "@/lib/revision";
 import { formatEditedAt } from "@/lib/ax-progress";
+import type { EditComment } from "@/lib/queries/compare";
 
 interface Props {
   id: string;
@@ -24,6 +25,57 @@ interface Props {
   status: string;
   needsReview: number;
   updatedAt: string;
+  comments: EditComment[];
+  userEmail: string;
+}
+
+const KINDS = Object.keys(KIND_META) as RevisionKind[];
+
+/** 원문 위에 교정 항목을 순서대로 얹은 세그먼트. 반영된 항목은 before 취소선 + after, 미반영은 before만 점선 표시 */
+type Seg = { type: "text"; text: string } | { type: "edit"; edit: RevisionEdit; no: number; stale: boolean };
+
+function segmentsOf(original: string, edits: RevisionEdit[]): Seg[] {
+  const placed: { at: number; edit: RevisionEdit }[] = [];
+  let cursor = 0;
+  // 러너가 준 순서대로 원문에서 위치를 찾는다(같은 문자열이 여러 번이면 앞에서부터)
+  for (const e of edits) {
+    if (!e.before) continue;
+    const at = original.indexOf(e.before, cursor);
+    if (at < 0) continue;
+    placed.push({ at, edit: e });
+    cursor = at + e.before.length;
+  }
+  placed.sort((a, b) => a.at - b.at);
+  const segs: Seg[] = [];
+  let pos = 0;
+  let no = 0;
+  for (const p of placed) {
+    if (p.at < pos) continue; // 겹침은 건너뜀
+    if (p.at > pos) segs.push({ type: "text", text: original.slice(pos, p.at) });
+    segs.push({ type: "edit", edit: p.edit, no: ++no, stale: false });
+    pos = p.at + p.edit.before.length;
+  }
+  if (pos < original.length) segs.push({ type: "text", text: original.slice(pos) });
+  return segs;
+}
+
+function withHighlights(text: string, highlights: string[]) {
+  if (highlights.length === 0) return text;
+  const pattern = highlights
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length)
+    .map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  if (!pattern) return text;
+  return text.split(new RegExp(`(${pattern})`, "g")).map((s, i) =>
+    highlights.includes(s) ? (
+      <span key={i} className="hl-underline">
+        {s}
+      </span>
+    ) : (
+      s
+    ),
+  );
 }
 
 export function RevisionEditor(p: Props) {
@@ -41,16 +93,24 @@ export function RevisionEditor(p: Props) {
   const [updatedAt, setUpdatedAt] = useState(p.updatedAt);
   const [confirmToggle, setConfirmToggle] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
-  const previewRef = useRef<HTMLDivElement>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [hidden, setHidden] = useState<Set<RevisionKind>>(new Set());
+  const [comments, setComments] = useState<EditComment[]>(p.comments);
+  const [draft, setDraft] = useState("");
 
   const appliedCount = edits.filter((e) => e.applied).length;
+  const stale = useMemo(() => new Set(edits.filter((e) => isStale(p.original, e)).map((e) => e.id)), [edits, p.original]);
+  const segs = useMemo(() => segmentsOf(p.original, edits.filter((e) => !stale.has(e.id))), [p.original, edits, stale]);
+  const counts = KINDS.map((k) => ({ k, n: edits.filter((e) => e.kind === k).length }));
+  const sel = edits.find((e) => e.id === selected) ?? null;
+  const selNo = segs.find((s) => s.type === "edit" && s.edit.id === selected) as Extract<Seg, { type: "edit" }> | undefined;
+  const selComments = sel ? comments.filter((c) => c.edit_key === sel.id) : [];
+  const commented = new Set(comments.map((c) => c.edit_key));
 
-  /** 교정 토글 → 항상 원문 기준으로 다시 계산한다. */
   function toggle(id: string) {
     if (manual) return setConfirmToggle(id);
     applyToggle(id);
   }
-
   function applyToggle(id: string) {
     const next = edits.map((e) => (e.id === id ? { ...e, applied: !e.applied } : e));
     setEdits(next);
@@ -61,11 +121,11 @@ export function RevisionEditor(p: Props) {
   }
 
   function addHighlightFromSelection() {
-    const sel = window.getSelection()?.toString().trim();
-    if (!sel) return setMsg("탈고문에서 밑줄 칠 문장을 먼저 선택하세요.");
-    if (!edited.includes(sel)) return setMsg("선택한 문장을 탈고문에서 찾을 수 없습니다.");
-    if (highlights.includes(sel)) return setMsg("이미 밑줄이 있는 문장입니다.");
-    setHighlights([...highlights, sel]);
+    const s = window.getSelection()?.toString().trim();
+    if (!s) return setMsg("탈고문에서 밑줄 칠 문장을 먼저 선택하세요.");
+    if (!edited.includes(s)) return setMsg("선택한 문장을 탈고문에서 찾을 수 없습니다.");
+    if (highlights.includes(s)) return setMsg("이미 밑줄이 있는 문장입니다.");
+    setHighlights([...highlights, s]);
     setMsg("");
     setSaved(null);
   }
@@ -96,36 +156,29 @@ export function RevisionEditor(p: Props) {
     router.refresh();
   }
 
-  /** 밑줄 구간을 표시한 탈고문 미리보기 */
-  const previewNodes = useMemo(() => {
-    if (highlights.length === 0) return [edited];
-    const pattern = highlights
-      .filter(Boolean)
-      .sort((a, b) => b.length - a.length)
-      .map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-      .join("|");
-    if (!pattern) return [edited];
-    const parts = edited.split(new RegExp(`(${pattern})`, "g"));
-    return parts.map((s, i) =>
-      highlights.includes(s) ? (
-        <span key={i} className="hl-underline">
-          {s}
-        </span>
-      ) : (
-        s
-      ),
-    );
-  }, [edited, highlights]);
+  async function addComment() {
+    if (!sel || !draft.trim()) return;
+    const r = (await fetch("/api/ax/compare/comments", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ article_id: p.id, edit_key: sel.id, body: draft }),
+    }).then((x) => x.json())) as { id?: string; error?: string };
+    if (r.error) return setMsg(r.error);
+    setComments((cs) => [...cs, { id: r.id!, article_id: p.id, edit_key: sel.id, author_email: p.userEmail, author_name: "나", body: draft.trim(), created_at: new Date().toISOString() }]);
+    setDraft("");
+    router.refresh();
+  }
+  async function removeComment(id: string) {
+    setComments((cs) => cs.filter((c) => c.id !== id));
+    await fetch(`/api/ax/compare/comments?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+  }
 
   return (
     <div className="page-body">
-      {/* 상단 툴바 — 밑줄·저장·확정 */}
+      {/* 상단 툴바 */}
       <div className="toolbar" style={{ justifyContent: "space-between", marginBottom: 14 }}>
-        <span className="toolbar" style={{ margin: 0, gap: 8 }}>
-          <b style={{ fontSize: 15 }}>{p.name}</b>
-          <span className="faint">{p.university || "대학 미입력"}</span>
-          <span className="faint" aria-hidden />
-          <span className="faint">{p.studentType || "-"}</span>
+        <span className="toolbar" style={{ margin: 0, gap: 12 }}>
+          <span className="faint">{p.questionText}</span>
           <span className="faint">최종 편집 {formatEditedAt(updatedAt)}</span>
         </span>
         <span className="toolbar" style={{ margin: 0, gap: 8 }}>
@@ -134,14 +187,7 @@ export function RevisionEditor(p: Props) {
             중요 문장 밑줄
           </button>
           <label className="btn" style={{ cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={needsReview}
-              onChange={(e) => {
-                setNeedsReview(e.target.checked);
-                setSaved(null);
-              }}
-            />
+            <input type="checkbox" checked={needsReview} onChange={(e) => { setNeedsReview(e.target.checked); setSaved(null); }} />
             검수 필요
           </label>
           <button className="btn" onClick={() => save("edited")} disabled={!!busy} type="button">
@@ -170,92 +216,43 @@ export function RevisionEditor(p: Props) {
             <span className="flabel">
               소제목<span className="fhint">최대 25자, {subtitle.length}자</span>
             </span>
-            <input
-              className="input"
-              style={{ width: "100%", height: 40 }}
-              value={subtitle}
-              maxLength={25}
-              onChange={(e) => {
-                setSubtitle(e.target.value);
-                setSaved(null);
-              }}
-            />
+            <input className="input" style={{ width: "100%", height: 40 }} value={subtitle} maxLength={25} onChange={(e) => { setSubtitle(e.target.value); setSaved(null); }} />
           </label>
           <label className="field" style={{ marginBottom: 0 }}>
             <span className="flabel">
               항해일지 comment<span className="fhint">편집자 확인 필수, {comment.length}자</span>
             </span>
             <div className="ta-wrap">
-              <textarea
-                style={{ minHeight: 64 }}
-                value={comment}
-                onChange={(e) => {
-                  setComment(e.target.value);
-                  setSaved(null);
-                }}
-              />
+              <textarea style={{ minHeight: 64 }} value={comment} onChange={(e) => { setComment(e.target.value); setSaved(null); }} />
               <span className="char-count">{comment.length}자 (공백 포함)</span>
             </div>
           </label>
         </div>
       </div>
 
-      {/* 교정 항목 */}
-      <div className="section-title">
-        탈고 교정 {edits.length}건 중 {appliedCount}건 반영 <span className="faint">(REVISE.md 기준)</span>
-      </div>
-      {edits.length === 0 ? (
-        <div className="empty">
-          아직 탈고 결과가 없습니다. 원고 목록에서 ‘AI 원고 탈고 실행’을 눌러주세요.
-        </div>
-      ) : (
-        <div className="diff-list" style={{ marginBottom: 18 }}>
-          {edits.map((e) => {
-            const meta = KIND_META[e.kind] ?? KIND_META.flow;
-            const stale = isStale(p.original, e);
-            return (
-              <div key={e.id} className={`diff-item${e.applied ? " applied" : ""}`}>
-                <div className="d-head">
-                  <span className={`badge ${meta.cls}`}>{meta.label}</span>
-                  <span className="faint" style={{ fontSize: 12, flex: 1 }}>
-                    {e.note || meta.desc}
-                  </span>
-                  {stale && <span className="badge amber">원문에서 찾을 수 없음</span>}
-                  <button className="btn" onClick={() => toggle(e.id)} type="button">
-                    {e.applied ? (
-                      <>
-                        <Icon as={RotateCcw} size="sm" />
-                        되돌리기
-                      </>
-                    ) : (
-                      <>
-                        <Icon as={Check} size="sm" />
-                        반영하기
-                      </>
-                    )}
-                  </button>
-                </div>
-                <div className="d-body">
-                  <span className={`diff-old ${meta.cls}`}>{e.before || "(추가)"}</span>
-                  <span className="diff-arrow">→</span>
-                  <span className={meta.cls} style={{ fontWeight: 600 }}>
-                    {e.after || "(삭제)"}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* 원문 / 탈고문 */}
-      <div className="section-title toolbar" style={{ justifyContent: "space-between" }}>
-        <span>원문 → 탈고문</span>
-        <button className="btn" onClick={() => setRawMode(!rawMode)} type="button">
+      {/* 범례·필터·모드 */}
+      <section className="cmp-legend">
+        <span className="faint">교정 {edits.length}건 중 {appliedCount}건 반영</span>
+        {counts.map(({ k, n }) => (
+          <button
+            key={k}
+            type="button"
+            className={`cmp-leg ${KIND_META[k].cls} ${hidden.has(k) ? "off" : ""}`}
+            onClick={() => setHidden((h) => { const s = new Set(h); if (s.has(k)) s.delete(k); else s.add(k); return s; })}
+            title={KIND_META[k].desc}
+          >
+            <i /> {KIND_META[k].label} {n}
+          </button>
+        ))}
+        {stale.size > 0 && <span className="badge amber">원문에서 못 찾음 {stale.size}</span>}
+        <span className="cmp-leg-op">
+          <s>원문</s> <b>교정</b> 표시, 미반영 항목은 점선. 항목을 누르면 오른쪽에서 반영과 댓글
+        </span>
+        <button className="btn" style={{ marginLeft: 8 }} onClick={() => setRawMode(!rawMode)} type="button">
           {rawMode ? (
             <>
               <Icon as={Eye} />
-              밑줄 보기
+              표기 보기
             </>
           ) : (
             <>
@@ -264,99 +261,133 @@ export function RevisionEditor(p: Props) {
             </>
           )}
         </button>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div className="pane">
-          <div className="faint" style={{ marginBottom: 6 }}>
-            원문 <span style={{ fontSize: 11 }}>{p.questionText}</span>
-          </div>
-          <div
-            style={{
-              whiteSpace: "pre-wrap",
-              fontSize: 13,
-              lineHeight: 1.8,
-              maxHeight: 520,
-              overflowY: "auto",
-              padding: 12,
-              background: "var(--bg-subtle)",
-              borderRadius: "var(--radius-sm)",
-            }}
-          >
-            {p.original}
-          </div>
-        </div>
-        <div className="pane">
-          <div className="faint" style={{ marginBottom: 6 }}>
-            탈고문 {highlights.length > 0 && `(밑줄 ${highlights.length}곳)`}
-          </div>
+      </section>
+
+      <div className="cmp-grid">
+        <article className="cmp-text">
+          {edits.length === 0 && !rawMode && (
+            <div className="empty">아직 탈고 결과가 없습니다. 원고 목록에서 ‘AI 원고 탈고 실행’을 눌러주세요.</div>
+          )}
           {rawMode ? (
             <textarea
-              style={{
-                width: "100%",
-                height: 520,
-                fontSize: 13,
-                lineHeight: 1.8,
-                padding: 12,
-                border: "1px solid var(--border-strong)",
-                borderRadius: "var(--radius-sm)",
-                fontFamily: "var(--font)",
-                resize: "vertical",
-              }}
+              className="rev-raw"
               value={edited}
-              onChange={(e) => {
-                setEdited(e.target.value);
-                setManual(true);
-                setSaved(null);
-              }}
+              onChange={(e) => { setEdited(e.target.value); setManual(true); setSaved(null); }}
             />
           ) : (
-            <div
-              ref={previewRef}
-              style={{
-                whiteSpace: "pre-wrap",
-                fontSize: 13,
-                lineHeight: 1.8,
-                maxHeight: 520,
-                overflowY: "auto",
-                padding: 12,
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-sm)",
-              }}
-            >
-              {previewNodes}
+            <div style={{ whiteSpace: "pre-wrap" }}>
+              {segs.map((s, i) => {
+                if (s.type === "text") return <span key={i}>{withHighlights(s.text, highlights)}</span>;
+                const e = s.edit;
+                const meta = KIND_META[e.kind] ?? KIND_META.flow;
+                if (hidden.has(e.kind)) return <span key={i}>{e.applied ? withHighlights(e.after, highlights) : e.before}</span>;
+                return (
+                  <mark
+                    key={i}
+                    className={`chg ${e.applied ? "replace" : "pending"} ${meta.cls} ${selected === e.id ? "sel" : ""}`}
+                    title={e.note || meta.desc}
+                    onClick={() => setSelected(e.id)}
+                  >
+                    <sup className="chg-no">{s.no}</sup>
+                    {e.applied ? (
+                      <>
+                        <s className="chg-before">{e.before}</s>
+                        <span className="chg-after">{withHighlights(e.after || "", highlights)}{!e.after && <span className="faint">(삭제)</span>}</span>
+                      </>
+                    ) : (
+                      <span className="chg-keep">{e.before}</span>
+                    )}
+                    {commented.has(e.id) && <Icon as={MessageSquare} size="sm" className="chg-cm" />}
+                  </mark>
+                );
+              })}
             </div>
           )}
-        </div>
-      </div>
 
-      {/* 밑줄 목록 */}
-      {highlights.length > 0 && (
-        <div className="card" style={{ marginTop: 14 }}>
-          <div className="faint" style={{ marginBottom: 8 }}>
-            밑줄 {highlights.length}곳 (원고 다운로드에 반영)
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {highlights.map((h, i) => (
-              <span key={i} className="badge gray" style={{ maxWidth: 420 }}>
-                <span className="hl-underline" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {h}
-                </span>
-                <button
-                  onClick={() => {
-                    setHighlights(highlights.filter((_, j) => j !== i));
-                    setSaved(null);
-                  }}
-                  aria-label="밑줄 삭제"
-                  style={{ marginLeft: 4, border: "none", background: "none", cursor: "pointer", color: "var(--red)" }}
-                  type="button"
-                >
-                  <Icon as={X} size="sm" />
+          {highlights.length > 0 && (
+            <div className="rev-hl">
+              <div className="faint" style={{ marginBottom: 6 }}>밑줄 {highlights.length}곳 (원고 다운로드에 반영)</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {highlights.map((h, i) => (
+                  <span key={i} className="badge gray" style={{ maxWidth: 420 }}>
+                    <span className="hl-underline" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{h}</span>
+                    <button onClick={() => { setHighlights(highlights.filter((_, j) => j !== i)); setSaved(null); }} aria-label="밑줄 삭제" className="kebab-btn" style={{ width: 20, height: 20 }} type="button">
+                      <Icon as={X} size="sm" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </article>
+
+        <aside className="cmp-side">
+          {!sel ? (
+            <div className="empty" style={{ padding: "32px 12px" }}>본문에서 교정 항목을 누르면 여기에 원문, 교정, 댓글이 보입니다.</div>
+          ) : (
+            <>
+              <div className="cmp-side-head">
+                <b>#{selNo?.no ?? "-"} <span className={`badge ${(KIND_META[sel.kind] ?? KIND_META.flow).cls}`}>{(KIND_META[sel.kind] ?? KIND_META.flow).label}</span></b>
+                <button className="btn" onClick={() => toggle(sel.id)} type="button">
+                  {sel.applied ? (
+                    <>
+                      <Icon as={RotateCcw} />
+                      되돌리기
+                    </>
+                  ) : (
+                    <>
+                      <Icon as={Check} />
+                      반영하기
+                    </>
+                  )}
                 </button>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+              </div>
+              <div className="cmp-reason muted">{sel.note || (KIND_META[sel.kind] ?? KIND_META.flow).desc}{stale.has(sel.id) ? " (원문에서 찾을 수 없음)" : ""}</div>
+              <div className="cmp-pair">
+                <div className="cmp-pair-label">원문</div>
+                <div className="cmp-pair-text before">{sel.before || "(추가)"}</div>
+              </div>
+              <div className="cmp-pair">
+                <div className="cmp-pair-label">교정 {sel.applied ? "(반영됨)" : "(미반영)"}</div>
+                <div className="cmp-pair-text after">{sel.after || "(삭제)"}</div>
+              </div>
+
+              <div className="section-title" style={{ marginTop: 18 }}>댓글 {selComments.length}</div>
+              <ul className="cmp-comments">
+                {selComments.map((c) => (
+                  <li key={c.id}>
+                    <div className="cmp-cm-head">
+                      <b>{c.author_name}</b>
+                      <span className="faint">{formatEditedAt(c.created_at)}</span>
+                      {c.author_email === p.userEmail && (
+                        <button type="button" className="kebab-btn" style={{ width: 24, height: 24, marginLeft: "auto" }} onClick={() => removeComment(c.id)} aria-label="댓글 삭제">
+                          <Icon as={Trash2} size="sm" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="cmp-cm-body">{c.body}</div>
+                  </li>
+                ))}
+                {selComments.length === 0 && <li className="faint" style={{ fontSize: 13 }}>아직 댓글이 없습니다.</li>}
+              </ul>
+              <div className="ta-wrap" style={{ marginTop: 8 }}>
+                <textarea
+                  value={draft}
+                  placeholder="이 교정에 대한 의견을 남기세요. Cmd+Enter로 등록"
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && addComment()}
+                  style={{ minHeight: 72, paddingBottom: 12 }}
+                />
+              </div>
+              <div className="toolbar" style={{ margin: "8px 0 0", justifyContent: "flex-end" }}>
+                <button type="button" className="btn primary" onClick={addComment} disabled={!draft.trim()}>
+                  댓글 달기
+                </button>
+              </div>
+            </>
+          )}
+        </aside>
+      </div>
 
       <Modal
         open={!!confirmToggle}

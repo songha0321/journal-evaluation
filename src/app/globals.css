@@ -1324,3 +1324,9 @@ mark.chg .chg-cm { color: var(--point); margin-left: 2px; vertical-align: -2px; 
 .cmp-comments li { border-top: 1px solid var(--border); padding-top: 8px; }
 .cmp-cm-head { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .cmp-cm-body { font-size: 13px; line-height: 1.6; white-space: pre-wrap; margin-top: 2px; }
+
+/* 탈고 편집기: 미반영 교정은 점선, 직접 편집 textarea */
+mark.chg.pending { background: transparent; border-bottom: 2px dashed var(--k); }
+mark.chg .chg-keep { color: inherit; }
+.rev-raw { width: 100%; min-height: 480px; font: inherit; font-size: 15px; line-height: 2; padding: 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); resize: vertical; }
+.rev-hl { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 12px; }
