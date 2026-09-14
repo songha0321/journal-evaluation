@@ -80,7 +80,7 @@
 | R0-QA | ☐ | 0회차(커밋 `11e9839`) 화면 QA 미실행 — 빌드·배포 성공만 확인. S4·S5 탈고 흐름(러너 → `/ax/toc/[tocId]/[msId]` 교정 승인 → finalize → export) 실브라우저 통과 여부 미확인 | QA 실행 |
 | R0-UI | ✅ | AX 웹 UI 개편 — 1~4회차로 완료(포인트 컬러·표·검색/드롭다운·단계 줄·대시보드). 남은 것은 실브라우저 클릭 검증 | — |
 | R0-DS | ☐ | `src/app/globals.css` 토큰이 DESIGN.md v2.0(차콜 크롬 + 코랄, `#0077C1`) 기준 — v3.3 브랜드 팔레트와 불일치. UI 개편 때 DESIGN.md §6.2 재매핑표대로 교체 | R0-UI |
-| R1-AUTH | ⏳ | 로그인은 **와꾸만** 완성. 실제 동작에는 Google OAuth 클라이언트 발급 + Worker secret 3개(README §로그인 설정) + 원격 D1에 `migrations/0013_app_users.sql`·`0014_toc_confirmed_by.sql` 적용이 필요. 그 전까지 라이브는 로그인 페이지에서 "설정 대기" 안내 | OAuth 발급(콘솔 작업) |
+| R1-AUTH | ⏳ | **Google 로그인 연결 완료(2026-09-14)**: GCP 프로젝트 `sdij-journal`(gracesongha@gmail.com), 앱 "항해일지 AUTO", 외부·테스트 모드(테스트 사용자 apsongpark·gracesongha), 웹 클라이언트 "항해일지 AUTO 웹"(리디렉션 라이브+localhost), Worker secret 3개 등록, 원격 D1 0013·0014 적용, 허가 계정 2개. 남은 것: **실제 로그인 왕복 검증**(사용자가 직접 Google 동의 클릭)  그 전까지 라이브는 로그인 페이지에서 "설정 대기" 안내 | OAuth 발급(콘솔 작업) |
 | R2-PUB | ⏳ | 편집 완료 항해일지는 R3-18로 구현됨. 남은 것: 1차 `/articles/*` 페이지와 StubButton 5개 삭제(중복), `ax_issue.published_at`이 전부 NULL이라 발행일 열이 비어 있음(백필 필요), 2027 1호차는 `editing`인데 articles 48편이 이미 적재돼 있어 상태 정합 확인 | 데이터 확인 |
 | R2-NAME | ☐ | D1 `authors`에 이름이 **"ㅋㅋ"**인 8기 성적우수 작성자가 있음(수기 DB 8기 목록 첫 행). ETL 원본 시트 확인 후 정정 필요 | 데이터 확인 |
 | R2-C6 | ☐ | D1 `authors`에 **6기 81명**이 있는데 PROCESS.md는 "6기 발간 없음, 적재 5·7·8·9기"라고 적혀 있음. 어느 쪽이 맞는지 확인 필요(데이터 대시보드 기수별 준비율에 6기 표시됨) | 데이터 확인 |
@@ -130,7 +130,9 @@ FE를 고친 회차는 아래를 매번 다시 본다.
 | R4-16 | FE | 표 전부 | 행 높이 기본 40px로 통일(compact/comfortable 지정 전부 제거, 예외 시만 사용). 헤더의 정렬 화살표와 필터 아이콘은 **열 오른쪽 끝**에 모아 정렬 | `DataTable.tsx`, `globals.css`, 페이지 4개 | 스크린샷 | ✅ |
 | R4-17 | FE | `/settings` | 환경설정 재구성 — **항목형 목록**(왼쪽 이름·설명, 오른쪽 컨트롤, 항목 사이 윗선). 포인트 컬러는 **한 항목**(현재 색 박스 + 프리셋 드롭다운 + "직접 지정" 시 hex·피커·적용, 기본값 버튼, 아래 미리보기 줄 여유 있게). 컬러 피커는 안쪽 여백 없이 박스를 가득 채움. 추가 항목: 사이드바 기본 상태, 수기 DB 한 화면 행 수(25/50/100, 쿠키로 서버 반영), 정렬·필터 기억(준비 중, 비활성), AI 러너 꺼짐 판정(3/10/30분, 대시보드 반영), 계정(마이페이지·로그아웃), 모든 설정 초기화. 저장은 localStorage + 쿠키 `hj.settings` | `src/lib/settings.ts`, `SettingsForm.tsx`, `settings/page.tsx`, `AppShell.tsx`, `qna/page.tsx`, `ax/page.tsx`, `queries/data.ts`, `globals.css` | 스크린샷. **드롭다운·피커 실브라우저 미확인** | ⏳ |
 | R4-18 | FE | 표 전부 | 헤더 바탕 wash-2(진하게) + 글자 포인트 진한색으로 행 hover(wash-1)와 구분. **모든 헤더 좌측 정렬**(숫자 열도 헤더는 왼쪽, 셀만 오른쪽), 필터 패널도 왼쪽 기준 | `globals.css` | 스크린샷 | ✅ |
-| 회귀 | — | — | G-1 tsc ✅ · G-9 미배포 | — | — | ⏳ |
+| R4-19 | 배포 | 라이브 | 커밋 `ace5885` 푸시, 원격 D1 0013·0014·1호차 목차 시드 적용, `npm run deploy` 성공. 라이브는 로그인 게이트 활성(미로그인 → /login) | — | curl 307/200 | ✅ |
+| R4-20 | 인증 | Google | GCP `sdij-journal` 프로젝트에 Google 인증 플랫폼 구성(외부·테스트), OAuth 웹 클라이언트 발급, Worker secret GOOGLE_CLIENT_ID·GOOGLE_CLIENT_SECRET·AUTH_SECRET 등록, 테스트 사용자·허가 계정 2개. `/api/auth/google`이 accounts.google.com으로 307 확인 | GCP 콘솔, wrangler secret | curl. **로그인 왕복은 사용자 확인 대기** | ⏳ |
+| 회귀 | — | — | G-1 tsc ✅ · G-9 배포 ✅ | — | — | ⏳ |
 
 ### 3회차 — 2026-09-14 포인트 컬러·표 통일·검색/드롭다운·사이드바 접기 (미커밋)
 

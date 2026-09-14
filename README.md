@@ -22,6 +22,8 @@ npx wrangler d1 execute sdij-journal --remote --file migrations/0013_app_users.s
 
 ## 로그인 설정 (Google, 허가 계정만)
 
+> 2026-09-14 설정 완료: GCP 프로젝트 `sdij-journal`(gracesongha@gmail.com 계정), 앱 "항해일지 AUTO", 게시 상태 "테스트 중"(외부). 테스트 모드에서는 **테스트 사용자로 등록된 Google 계정만** 로그인 화면을 통과하므로, 새 편집자를 추가할 때는 ① GCP 콘솔 > Google 인증 플랫폼 > 대상 > 테스트 사용자에 이메일 추가, ② 아래 3단계의 `app_users` INSERT 둘 다 필요하다.
+
 로그인은 Google OIDC로 이메일을 확인하고 D1 `app_users`에 등록된 계정만 통과시킨다. 아래 3단계를 마쳐야 라이브에서 동작한다. 그 전에는 로그인 페이지가 "설정 대기" 상태로 뜬다.
 
 1. **Google Cloud 콘솔** → API 및 서비스 → 사용자 인증 정보 → OAuth 클라이언트 ID 만들기(웹 애플리케이션).
