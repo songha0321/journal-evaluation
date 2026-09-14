@@ -1271,3 +1271,56 @@ th.num .th-panel { left: 0; right: auto; }
 .switch input { width: 16px; height: 16px; margin: 0; accent-color: var(--point); }
 
 .name-editor { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* ---- 원문 비교 ---- */
+.cmp-source { border-top: 1px solid var(--border); padding: 14px 0 16px; }
+.cmp-source-head { display: flex; align-items: center; gap: 12px; font-size: 13px; margin-bottom: 10px; }
+.cmp-cands { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0 24px; }
+.cmp-cand { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); cursor: pointer; min-width: 0; }
+.cmp-cand.on { border-top-color: var(--point); }
+.cmp-cand input { margin: 3px 0 0; accent-color: var(--point); flex-shrink: 0; }
+.cmp-cand-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 12px; }
+.cmp-cand-top { display: flex; align-items: center; gap: 8px; }
+.cmp-score { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--point-dark); background: var(--wash-1); padding: 0 6px; height: 20px; display: inline-flex; align-items: center; }
+.cmp-cand-q { color: var(--text); }
+.cmp-cand-a { color: var(--text-muted); }
+.cmp-raw { margin: 12px 0 0; padding: 12px 14px; background: var(--bg-subtle); font: inherit; font-size: 13px; line-height: 1.7; white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
+
+.cmp-legend { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--border); font-size: 12px; }
+.cmp-leg { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border: 1px solid var(--border); background: var(--bg); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text); }
+.cmp-leg i { width: 10px; height: 10px; display: inline-block; }
+.cmp-leg.off { opacity: 0.45; text-decoration: line-through; }
+.cmp-leg-op { margin-left: auto; color: var(--text-faint); }
+.cmp-leg-op s, .cmp-leg-op u, .cmp-leg-op em { font-style: normal; }
+
+.cmp-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 0 32px; align-items: start; border-top: 1px solid var(--border); }
+.cmp-text { padding: 20px 0; font-size: 15px; line-height: 2; word-break: keep-all; max-width: 760px; }
+.cmp-side { position: sticky; top: 0; padding: 16px 0 24px; border-left: 1px solid var(--border); padding-left: 24px; min-height: 240px; }
+
+/* 규칙 색: 배지와 같은 팔레트 */
+.rk-typo      { --k: var(--point); --k-bg: var(--wash-1); }
+.rk-sensitive { --k: var(--red); --k-bg: var(--red-bg); }
+.rk-term      { --k: var(--point-dark); --k-bg: var(--wash-2); }
+.rk-structure { --k: var(--amber); --k-bg: var(--amber-bg); }
+.rk-flow      { --k: var(--text-muted); --k-bg: var(--bg-hover); }
+.cmp-leg i { background: var(--k, var(--border)); }
+
+mark.chg { background: var(--k-bg); color: inherit; padding: 1px 2px; border-bottom: 2px solid var(--k); cursor: pointer; border-radius: 0; position: relative; }
+mark.chg.sel { outline: 2px solid var(--k); outline-offset: 1px; }
+mark.chg .chg-no { font-size: 10px; font-weight: 700; color: var(--k); margin-right: 2px; vertical-align: super; line-height: 0; }
+mark.chg .chg-before { color: var(--red); text-decoration: line-through; opacity: 0.75; font-size: 0.86em; margin-right: 4px; }
+mark.chg.insert .chg-after { text-decoration: underline; text-decoration-color: var(--green); text-underline-offset: 3px; }
+mark.chg.replace .chg-after { font-weight: 600; }
+mark.chg .chg-cm { color: var(--point); margin-left: 2px; vertical-align: -2px; }
+
+.cmp-side-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
+.cmp-reason { font-size: 12px; margin: 6px 0 12px; }
+.cmp-pair { margin-bottom: 10px; }
+.cmp-pair-label { font-size: 11px; font-weight: 700; color: var(--text-faint); margin-bottom: 3px; }
+.cmp-pair-text { font-size: 13px; line-height: 1.7; padding: 8px 10px; white-space: pre-wrap; word-break: keep-all; }
+.cmp-pair-text.before { background: var(--red-bg); text-decoration: line-through; text-decoration-color: rgba(229, 52, 59, 0.5); }
+.cmp-pair-text.after { background: var(--green-bg); }
+.cmp-comments { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cmp-comments li { border-top: 1px solid var(--border); padding-top: 8px; }
+.cmp-cm-head { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.cmp-cm-body { font-size: 13px; line-height: 1.6; white-space: pre-wrap; margin-top: 2px; }

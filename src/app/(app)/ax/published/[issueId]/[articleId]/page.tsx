@@ -36,11 +36,12 @@ export default async function PublishedArticlePage({
             {article.university && <span>{article.university}</span>}
             {article.epithet && <span className="muted">{article.epithet}</span>}
             {article.char_count != null && <span>{article.char_count.toLocaleString("ko-KR")}자</span>}
-            {article.qna_id && (
-              <Link href={`/data/authors/${article.author_id}`} className="tbl-link">
-                원본 수기 보기
-              </Link>
-            )}
+            <Link href={`/ax/published/${issueId}/${articleId}/compare`} className="tbl-link">
+              원문 비교
+            </Link>
+            <Link href={`/data/authors/${article.author_id}`} className="tbl-link">
+              작성자 수기
+            </Link>
           </>
         }
       />

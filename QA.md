@@ -11,7 +11,7 @@
 | 브랜치 | `mvp` (main 미병합) |
 | 로컬 | `npm run dev` → http://localhost:3000/ax — 로컬 D1(`.wrangler/state`)에 프로덕션 스냅샷(2026-09-14, 12테이블) 적재됨. 갱신은 원격 SELECT 덤프 → sqlite3 적재(export API는 토큰 권한 없음) |
 | 배포 | `npm run deploy` (= opennextjs-cloudflare build + deploy). 빌드가 stale하면 `rm -rf .wrangler/state` |
-| 최종 갱신 | 2026-09-14 (4회차 — 원고 대시보드 고도화·표지 확보·진행률 검정) |
+| 최종 갱신 | 2026-09-14 (5회차 — 원문 비교·댓글) |
 
 ## 표기 규칙
 
@@ -108,6 +108,18 @@ FE를 고친 회차는 아래를 매번 다시 본다.
 
 ## 실행 기록
 
+### 5회차 — 2026-09-14 원문 비교(게재 원고 ↔ qna) + 교정별 댓글 (배포)
+
+정식 제작 프로세스의 단계가 아니라 탈고 규칙을 관찰하기 위한 기능. 컨펌된 4항목.
+
+| ID | 영역 | 화면·경로 | 변경 내용 | 파일 | 검증 | 상태 |
+| --- | --- | --- | --- | --- | --- | --- |
+| R5-01 | LIB | 비교 | `src/lib/compare.ts` — 유사도(문자 3-gram 자카드 50% + 어절 LCS 비율 50%), 어절 LCS diff(추가/삭제/치환 묶기, 문단은 ¶ 토큰), 규칙 자동 분류 5종(typo: 어절 안 편집거리 ≤34% 또는 부호·띄어쓰기만 / sensitive: 삭제 구절에 키워드 / term: 시험·콘텐츠 용어 / structure: 8어절 이상 또는 문장 단위 / flow: 나머지), 여러 원문을 탈고문 등장 순서로 이어 붙이는 `mergeSources` | `compare.ts` | 실데이터 1편 27건 분류 확인 | ✅ |
+| R5-02 | DB | 0015·0016 | `ax_edit_comment`(원고·변경 키·작성자·본문), `ax_edit_label`(편집자가 고친 규칙), `articles.qna_ids_json`(원문 여러 개). 로컬·원격 적용 | `migrations/0015_*.sql`, `0016_*.sql` | 원격 실행 확인 | ✅ |
+| R5-03 | BE | `/api/ax/compare/{source,comments,label}` | 원문 확정(여러 개), 댓글 추가·삭제(본인만), 규칙 라벨 upsert. 전부 로그인 필요 | `src/app/api/ax/compare/**` | tsc | ✅ |
+| R5-04 | FE | `/ax/published/[issueId]/[articleId]/compare` | 원문 후보 5건(점수·질문·미리보기, 체크 여러 개, 확정됨 배지, 원문 전체 보기) → 확정 버튼 / 범례(규칙별 건수, 켜고 끄기) / 탈고문 본문에 번호·규칙색 배경·삭제 취소선·추가 밑줄·치환 굵게, 댓글 있으면 말풍선 / 오른쪽 고정 패널: 규칙 드롭다운(저장), 원문·탈고문 대조, 댓글 목록·입력(Cmd+Enter). 원고 읽기 히어로에 "원문 비교" 링크 | `CompareView.tsx`, `compare/page.tsx`, `queries/compare.ts`, `globals.css` | 스크린샷. **클릭·댓글 동작은 실브라우저 확인 필요** | ⏳ |
+| 한계 | — | — | 비교는 매번 계산이라 본문이 바뀌면 변경 키가 바뀌어 댓글이 떨어질 수 있음(게재 원고는 고정이라 실사용 문제 없음). 동명이인은 같은 기수 이름 일치로 후보에 포함. 문장 순서를 바꾼 편집은 삭제+추가로 잡힘 | — | — | — |
+
 ### 4회차 — 2026-09-14 원고 대시보드 고도화·역대 표지·진행률 검정 (미커밋)
 
 | ID | 영역 | 화면·경로 | 변경 내용 | 파일 | 검증 | 상태 |
@@ -132,6 +144,7 @@ FE를 고친 회차는 아래를 매번 다시 본다.
 | R4-18 | FE | 표 전부 | 헤더 바탕 wash-2(진하게) + 글자 포인트 진한색으로 행 hover(wash-1)와 구분. **모든 헤더 좌측 정렬**(숫자 열도 헤더는 왼쪽, 셀만 오른쪽), 필터 패널도 왼쪽 기준 | `globals.css` | 스크린샷 | ✅ |
 | R4-19 | 배포 | 라이브 | 커밋 `ace5885` 푸시, 원격 D1 0013·0014·1호차 목차 시드 적용, `npm run deploy` 성공. 라이브는 로그인 게이트 활성(미로그인 → /login) | — | curl 307/200 | ✅ |
 | R4-20 | 인증 | Google | GCP `sdij-journal` 프로젝트에 Google 인증 플랫폼 구성(외부·테스트), OAuth 웹 클라이언트 발급, Worker secret GOOGLE_CLIENT_ID·GOOGLE_CLIENT_SECRET·AUTH_SECRET 등록, 테스트 사용자·허가 계정 2개. `/api/auth/google`이 accounts.google.com으로 307 확인 | GCP 콘솔, wrangler secret | curl. **로그인 왕복은 사용자 확인 대기** | ⏳ |
+| R4-21 | BE+FE | 인증·마이페이지 | 세션 쿠키 복호화 버그(atob 결과를 UTF-8로 안 풀어 한글 이름·역할 깨짐) 수정. 마이페이지 **이름 바꾸기**(인라인 편집 → `PATCH /api/me`, app_users.name 갱신 + 세션 재발급). 배포 완료 | `src/lib/auth.ts`, `src/app/api/me/route.ts`, `NameEditor.tsx`, `my/page.tsx` | tsc, 배포. 실브라우저 확인 대기 | ⏳ |
 | 회귀 | — | — | G-1 tsc ✅ · G-9 배포 ✅ | — | — | ⏳ |
 
 ### 3회차 — 2026-09-14 포인트 컬러·표 통일·검색/드롭다운·사이드바 접기 (미커밋)

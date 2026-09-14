@@ -57,6 +57,7 @@ export interface ArticleDetail extends ArticleRow {
   hanmadi: string | null;
   source_file: string | null;
   source_page: number | null;
+  qna_ids_json: string | null;
 }
 
 export async function getArticle(id: string): Promise<ArticleDetail | null> {
@@ -64,7 +65,7 @@ export async function getArticle(id: string): Promise<ArticleDetail | null> {
     `SELECT id, issue_id, issue_label, part_no, chapter_no, part_title, section, subtitle, title,
             author_name, hall, class_name, university, epithet, char_count,
             source_type, source_order, source_file, source_page, qna_id, author_id,
-            final_content, comment, hanmadi
+            final_content, comment, hanmadi, qna_ids_json
      FROM articles WHERE id = ?`,
     [id],
   );
