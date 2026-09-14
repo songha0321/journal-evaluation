@@ -122,6 +122,7 @@ FE를 고친 회차는 아래를 매번 다시 본다.
 | R5-06 | FE | 게재 원고 표·히어로 | 학생 칼럼에 섞여 있던 관 정보를 별도 "관" 열로 분리, 히어로 메타도 이름·관·반 각각 | `published/[issueId]/page.tsx`, `[articleId]/page.tsx` | 스크린샷 | ✅ |
 | R5-07 | DB+BE+FE | 권한 | **역할 2종**(0017: 관리자/편집자, 기존 운영관리자→관리자, 기본값 편집자, 옛 쿠키 호환). 관리자 화면 `/admin/users`(계정 추가·역할 변경·차단, 자기 자신 보호) + API `/api/admin/users`. 편집자는 데이터 관리 중 **수기 DB만** 열리고 데이터 대시보드·질문지·작성자·평가 DB는 사이드바 자물쇠 + 잠금 안내(용역비 정보는 전부 잠긴 화면에만 있음). 원고 관리는 편집자도 전부 사용. 관리자 2명(apsongpark·gracesongha), 편집자 5명(shnelbom·chaykim1208·sonhyeonchae·suhyi055·backhansu) D1 등록 + GCP 테스트 사용자 등록 | `migrations/0017_roles.sql`, `auth.ts`, `api/admin/users`, `admin/users/page.tsx`, `UsersAdmin.tsx`, `Locked.tsx`, `SidebarNav.tsx`, data 페이지 5개 | tsc, 원격 D1 확인. **편집자 계정 실로그인 확인 필요** | ⏳ |
 | R5-08 | FE | `/admin/users` | 표 안 역할 드롭다운(셀 넘침 숨김 때문에 안 열리고 36px로 큼) → 역할 배지 + "관리자로/편집자로" 밑줄 링크 토글(표 안 동작 규칙). 상단 계정 추가 줄의 드롭다운은 표 밖이라 유지 | `UsersAdmin.tsx` | 스크린샷 | ✅ |
+| R5-09 | RUN | AI 러너 | 러너를 launchd 서비스 `com.sdij.ax-runner`로 등록(RunAtLoad, KeepAlive, 로그 `~/Library/Logs/ax-runner.log`), `AX_LLM=claude AX_LLM_MODEL=sonnet`. 기동 직후 큐에 있던 탈고 1건(유동영) 처리 시작, D1 heartbeat working 확인 | `~/Library/LaunchAgents/com.sdij.ax-runner.plist`, README | launchctl state running, D1 ax_runner | ✅ |
 | 한계 | — | — | 비교는 매번 계산이라 본문이 바뀌면 변경 키가 바뀌어 댓글이 떨어질 수 있음(게재 원고는 고정이라 실사용 문제 없음). 동명이인은 같은 기수 이름 일치로 후보에 포함. 문장 순서를 바꾼 편집은 삭제+추가로 잡힘 | — | — | — |
 
 ### 4회차 — 2026-09-14 원고 대시보드 고도화·역대 표지·진행률 검정 (미커밋)

@@ -44,6 +44,19 @@ npx wrangler d1 execute sdij-journal --remote --file migrations/0013_app_users.s
 
 `AUTH_DEV_BYPASS`는 로컬 `.dev.vars` 전용이다. 프로덕션 secret에 넣지 않는다.
 
+## AI 러너 (맥 상주 서비스)
+
+AI 선별·탈고는 Worker가 큐(D1)에 적고, 이 맥에서 도는 러너가 처리한다. launchd 서비스 `com.sdij.ax-runner`로 등록돼 있어 로그인 시 자동 시작하고 죽으면 30초 후 되살아난다. LLM은 Claude Code CLI(`claude -p`)를 쓴다.
+
+```bash
+launchctl print gui/$(id -u)/com.sdij.ax-runner | grep state   # 상태
+tail -f ~/Library/Logs/ax-runner.log                            # 로그
+launchctl kickstart -k gui/$(id -u)/com.sdij.ax-runner          # 재시작
+launchctl bootout gui/$(id -u)/com.sdij.ax-runner               # 중지
+```
+
+설정 파일: `~/Library/LaunchAgents/com.sdij.ax-runner.plist` (환경변수 `AX_LLM=claude`, `AX_LLM_MODEL=sonnet`). 맥이 꺼져 있으면 큐만 쌓이고 대시보드의 AI 러너 카드가 "꺼짐"으로 바뀐다.
+
 ## 배포
 
 ```bash
