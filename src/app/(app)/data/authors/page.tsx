@@ -5,7 +5,6 @@ import { listEssays, getEssayFilterOptions, type EssayFilters } from "@/lib/quer
 import { cohortLabel } from "@/lib/format";
 
 import { getCurrentUser, isAdmin } from "@/lib/auth";
-import { Locked } from "@/components/ui/Locked";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +13,8 @@ export default async function AuthorsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  if (!isAdmin(await getCurrentUser())) return <Locked title="작성자 DB" />;
+  // 편집자도 열람 가능. 용역비 열만 관리자에게 보인다 (QA R6-02)
+  const admin = isAdmin(await getCurrentUser());
   const sp = await searchParams;
   const filters: EssayFilters = {
     cohort: sp.cohort ? Number(sp.cohort) : undefined,
@@ -25,8 +25,10 @@ export default async function AuthorsPage({
   };
 
   const [rows, options] = await Promise.all([listEssays(filters), getEssayFilterOptions()]);
-  const tableRows = rows.map((r) => ({
+  // 편집자에게는 용역비를 표 props(RSC 페이로드)에도 싣지 않는다
+  const tableRows = rows.map(({ scholarship_amount, ...r }) => ({
     ...r,
+    ...(admin ? { scholarship_amount } : {}),
     name_href: `/data/authors/${r.id}`,
     cohort_label: cohortLabel(r.cohort),
   }));
@@ -68,7 +70,7 @@ export default async function AuthorsPage({
             { key: "total_score", label: "점수", type: "score", width: 80, align: "right" },
             { key: "submission_status", label: "제출", type: "badge", badgeKind: "submission", width: 90 },
             { key: "ai_suspicion_level", label: "AI 의심", type: "badge", badgeKind: "suspicion", width: 90 },
-            { key: "scholarship_amount", label: "용역비", type: "won", width: 120 },
+            ...(admin ? [{ key: "scholarship_amount", label: "용역비", type: "won" as const, width: 120 }] : []),
           ]}
         />
       </div>

@@ -24,9 +24,10 @@ import { Avatar } from "@/components/ui/Avatar";
 import { isAdmin, type CurrentUser } from "@/lib/roles";
 
 /** 사이드바 IA. 아이콘은 Icon 래퍼(DESIGN.md §6.2.3). */
-type NavEntry = { section: string } | { href: string; label: string; Icon: LucideIcon; exact?: boolean; adminOnly?: boolean };
+export type NavEntry = { section: string } | { href: string; label: string; Icon: LucideIcon; exact?: boolean; adminOnly?: boolean };
 
-const NAV: NavEntry[] = [
+/** 사이드바와 모바일 더보기 시트가 같은 목록을 쓴다 */
+export const NAV: NavEntry[] = [
   { section: "원고 관리" },
   { href: "/ax", label: "원고 대시보드", Icon: LayoutDashboard, exact: true },
   { href: "/ax/issues", label: "편집 중 항해일지", Icon: FilePen },
@@ -35,14 +36,14 @@ const NAV: NavEntry[] = [
   { href: "/data", label: "데이터 대시보드", Icon: Gauge, exact: true, adminOnly: true },
   { href: "/data/qna", label: "수기 DB", Icon: MessagesSquare },
   { href: "/data/questions", label: "수기 질문지 DB", Icon: CircleHelp, adminOnly: true },
-  { href: "/data/authors", label: "작성자 DB", Icon: Users, adminOnly: true },
+  { href: "/data/authors", label: "작성자 DB", Icon: Users },
   { href: "/data/evaluations", label: "작성자 평가 DB", Icon: ClipboardCheck, adminOnly: true },
   { section: "설정" },
   { href: "/settings", label: "환경설정", Icon: Settings },
   { href: "/admin/users", label: "사용자 권한", Icon: ShieldCheck, adminOnly: true },
 ];
 
-function isActive(pathname: string, href: string, exact?: boolean): boolean {
+export function isActive(pathname: string, href: string, exact?: boolean): boolean {
   if (exact) return pathname === href;
   return pathname === href || pathname.startsWith(href + "/");
 }

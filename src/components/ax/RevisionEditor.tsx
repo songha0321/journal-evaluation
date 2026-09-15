@@ -211,7 +211,7 @@ export function RevisionEditor(p: Props) {
 
       {/* 소제목 · comment */}
       <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 14 }}>
+        <div className="rev-head-row">
           <label className="field" style={{ marginBottom: 0 }}>
             <span className="flabel">
               소제목<span className="fhint">최대 25자, {subtitle.length}자</span>

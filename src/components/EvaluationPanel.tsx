@@ -12,7 +12,8 @@ function Chip({ label, v }: { label: string; v: number | null }) {
   );
 }
 
-export function EvaluationPanel({ evaluations }: { evaluations: Evaluation[] }) {
+/** showFee: 용역비 행 노출 여부. 관리자만 true (QA R6-02) */
+export function EvaluationPanel({ evaluations, showFee = true }: { evaluations: Evaluation[]; showFee?: boolean }) {
   if (evaluations.length === 0) {
     return (
       <div className="card">
@@ -28,7 +29,7 @@ export function EvaluationPanel({ evaluations }: { evaluations: Evaluation[] }) 
   return (
     <div className="card">
       <div className="section-title" style={{ margin: "0 0 10px" }}>
-        평가와 용역비
+        {showFee ? "평가와 용역비" : "평가"}
       </div>
       {evaluations.map((e) => (
         <div key={e.id} style={{ paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid var(--border)" }}>
@@ -56,10 +57,14 @@ export function EvaluationPanel({ evaluations }: { evaluations: Evaluation[] }) 
             </p>
           ) : null}
           <div className="kv" style={{ gridTemplateColumns: "72px 1fr" }}>
-            <dt>용역비</dt>
-            <dd>
-              <strong>{formatWon(e.scholarship_amount)}</strong>
-            </dd>
+            {showFee ? (
+              <>
+                <dt>용역비</dt>
+                <dd>
+                  <strong>{formatWon(e.scholarship_amount)}</strong>
+                </dd>
+              </>
+            ) : null}
             {e.evidence ? (
               <>
                 <dt>평가자</dt>

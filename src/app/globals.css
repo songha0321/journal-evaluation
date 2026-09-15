@@ -75,15 +75,19 @@ a {
   display: flex;
   min-height: 100vh;
 }
+/* 사이드바는 화면 왼쪽에 고정(fixed)한다. 본문은 그만큼 왼쪽 여백을 두고 홀로 스크롤된다 (2026-09-15, 스크롤 시 사이드바가 따라 움직이던 문제) */
 .sidebar {
   width: var(--sidebar-w);
   flex-shrink: 0;
   background: var(--sidebar-bg);
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   padding: 12px 10px 14px;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  bottom: 0;
   height: 100vh;
+  z-index: 30;
   overflow-y: auto;
   overflow-x: hidden;
   transition: width 0.2s ease, padding 0.2s ease;
@@ -266,7 +270,10 @@ a {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  margin-left: var(--sidebar-w);
+  transition: margin-left 0.2s ease;
 }
+.app-shell.collapsed .main { margin-left: 56px; }
 .page-header {
   padding: 22px 28px 14px;
   border-bottom: 1px solid var(--border);
@@ -1338,3 +1345,160 @@ mark.chg .chg-keep { color: inherit; }
 .locked-box { display: flex; gap: 16px; align-items: flex-start; max-width: 520px; padding: 20px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); color: var(--text-muted); }
 .locked-box b { color: var(--text); }
 .locked-box p { margin: 4px 0 10px; font-size: 13px; line-height: 1.6; }
+
+/* ---- 목차 입력 행 · 탈고 머리 행 (인라인 grid를 클래스로 옮김, 값은 그대로. 모바일에서 1열로 접기 위함) ---- */
+.toc-field-row { display: grid; grid-template-columns: 90px 90px 1fr 120px; gap: 10px; margin-bottom: 4px; }
+.rev-head-row { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; }
+
+/* ---- 모바일 상단바·하단 탭·더보기 시트: 데스크톱에서는 그리지 않는다 ---- */
+.mobile-bar, .bnb, .bnb-sheet, .bnb-backdrop { display: none; }
+
+/* ============================================================
+   모바일 (≤767px, DESIGN.md §5 breakpoint) — QA 6회차
+   데스크톱 규칙은 손대지 않고 여기서만 덮어쓴다.
+   사이드바 대신 상단바 + 하단 탭(BNB) + 더보기 시트 (R6-12)
+   ============================================================ */
+@media (max-width: 767px) {
+  .app-shell { flex-direction: column; }
+  .app-shell .sidebar, .app-shell.collapsed .sidebar { display: none !important; }
+
+  /* 상단바 48px: 로고, 제목, 마이페이지. 본문과 함께 스크롤된다(고정 아님) */
+  .mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 48px;
+    padding: 0 8px 0 12px;
+    background: var(--chrome);
+    color: #ffffff;
+    flex-shrink: 0;
+  }
+  .mobile-bar .mb-brand { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; font-weight: 700; font-size: 15px; color: #ffffff; white-space: nowrap; }
+  .mobile-bar .mb-brand img { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; }
+  .mobile-bar .mb-user { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+  .mobile-bar .mb-user .avatar { width: 28px; height: 28px; font-size: 12px; }
+
+  /* 본문은 하단 탭만큼 아래 여백을 둔다 */
+  .main, .app-shell.collapsed .main { width: 100%; margin-left: 0; padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+
+  /* 하단 탭 56px + 홈 인디케이터 여백 */
+  .bnb {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70; /* 맨 위로(60)·모달(50)보다 위 */
+    display: flex;
+    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+  }
+  .bnb-item {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-faint);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bnb-item > svg { width: 20px; height: 20px; stroke-width: 1.5; } /* 라벨 10px에 맞춰 작고 얇게 */
+  .bnb-item > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .bnb-item.active { color: var(--point); }
+
+  /* 더보기 시트: 하단 탭 위로 올라온다. 사이드바와 같은 전체 메뉴 */
+  .bnb-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 66;
+    background: rgba(20, 20, 20, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .bnb-backdrop.open { opacity: 1; pointer-events: auto; }
+  .bnb-sheet {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    z-index: 68;
+    max-height: calc(100dvh - 56px - 48px);
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.12);
+    transform: translateY(calc(100% + 60px));
+    transition: transform 0.2s ease;
+  }
+  .bnb-sheet.open { transform: none; }
+  .bnb-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 8px 8px 16px; font-size: 13px; flex-shrink: 0; }
+  .bnb-sheet-nav { overflow-y: auto; padding: 0 8px 12px; }
+  .bnb-sheet-section { font-size: 11px; font-weight: 600; color: var(--text-faint); padding: 12px 8px 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .bnb-sheet-item { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 8px; font-size: 14px; font-weight: 500; color: var(--text); }
+  .bnb-sheet-item > svg { width: 18px; height: 18px; color: var(--text-muted); flex-shrink: 0; }
+  .bnb-sheet-item.active { color: var(--point); background: var(--wash-1); }
+  .bnb-sheet-item.active > svg { color: var(--point); }
+  .bnb-sheet-item.locked { color: var(--text-faint); }
+  .bnb-sheet-item .nav-lock { margin-left: auto; }
+  .bnb-sheet-item .faint { font-weight: 400; font-size: 12px; margin-left: 4px; }
+
+  /* 여백 28 → 16 */
+  .main { width: 100%; }
+  .page-header { padding: 16px 16px 12px; }
+  .page-header .actions { float: none; margin-bottom: 10px; flex-wrap: wrap; }
+  .page-body { padding: 16px 16px 48px; }
+  .hero { padding: 16px 16px 14px; gap: 12px; }
+  .hero h1 { font-size: 22px; }
+  .hero .hero-meta { flex-wrap: wrap; gap: 6px 12px; }
+  .hero.has-cover { min-height: 0; }
+  .hero-cover-img { display: none; }
+  .steps { padding: 0 16px; overflow-x: auto; }
+  .steps .step { flex: 1 0 auto; padding-right: 16px; }
+  .stage-bar { margin: -16px -16px 16px; padding: 12px 16px 4px; flex-wrap: wrap; }
+  .stage-bar .sb-left, .stage-bar .sb-right { flex-wrap: wrap; }
+
+  /* 표: 표 영역만 가로 스크롤 */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap table { min-width: 640px; }
+
+  /* 필터바: 고정 폭을 2열 유동 폭으로 */
+  .toolbar .dd, .toolbar .search { width: auto !important; flex: 1 1 calc(50% - 4px); min-width: 0; }
+  .dd-panel { max-width: calc(100vw - 32px); }
+
+  /* 모달: 전면 (DESIGN.md §7.12 모바일 팝업 규격) */
+  .modal-backdrop { padding: 0; align-items: stretch; }
+  .modal, .modal.wide { max-width: none; max-height: none; height: 100dvh; border-radius: 0; }
+
+  /* 그리드 접기 */
+  .stat-grid { gap: 0 16px; }
+  .stat-grid.kpi { grid-template-columns: repeat(2, 1fr); }
+  .issue-grid { grid-template-columns: 1fr; }
+  .detail-grid, .pane-grid, .article-grid, .dash-grid { grid-template-columns: minmax(0, 1fr); } /* 1fr만 쓰면 표 최소 폭(640px)이 열을 밀어낸다 */
+  .dash-grid > *, .detail-grid > * { min-width: 0; }
+  .set-row { grid-template-columns: 1fr; gap: 10px; }
+  .settings { max-width: none; }
+  .my-kv { max-width: none; }
+  .my-kv .kv-row { grid-template-columns: 1fr; }
+  .my-kv dt { padding-bottom: 2px; }
+  .my-kv dd { padding-top: 2px; }
+  .toc-field-row { grid-template-columns: 1fr 1fr; }
+  .rev-head-row { grid-template-columns: 1fr; }
+  .stage-bar-item { grid-template-columns: 96px 1fr 36px; }
+
+  /* 터치·입력 */
+  .input, .select, .search input, .dd-trigger, .ta-wrap textarea, .pane textarea { font-size: 16px; } /* iOS 자동 확대 방지 */
+  .scroll-top { right: 16px; bottom: calc(56px + 16px + env(safe-area-inset-bottom, 0px)); }
+}

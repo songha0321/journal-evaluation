@@ -12,7 +12,7 @@ export { isAdmin } from "./roles";
  *
  * 필요한 env (Worker secret / 로컬 .dev.vars):
  *   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, AUTH_SECRET(32자 이상 임의 문자열)
- *   AUTH_ORIGIN(선택, 콜백 origin 강제) · AUTH_DEV_BYPASS=1(로컬 전용, 로그인 생략)
+ *   AUTH_ORIGIN(선택, 콜백 origin 강제) · AUTH_DEV_BYPASS=1(로컬 전용, 로그인 생략) · AUTH_DEV_ROLE=편집자(로컬 전용, 편집자 화면 확인)
  */
 
 
@@ -90,11 +90,15 @@ export function sessionCookieOptions(secure: boolean) {
 /* ── 현재 사용자 ─────────────────────────────────────────────── */
 
 const DEV_USER: CurrentUser = { id: "dev-bypass", email: "dev@local", name: "로컬 개발자", role: "관리자" };
+/** 로컬 전용: AUTH_DEV_ROLE=편집자 로 편집자 화면을 확인한다 (QA R6-02) */
+function devUser(env: Record<string, string | undefined>): CurrentUser {
+  return env.AUTH_DEV_ROLE === "편집자" ? { ...DEV_USER, role: "편집자" } : DEV_USER;
+}
 
 /** 세션 쿠키를 검증해 현재 사용자를 돌려준다. 없거나 깨졌으면 null. */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const env = await getAuthEnv();
-  if (env.AUTH_DEV_BYPASS === "1") return DEV_USER;
+  if (env.AUTH_DEV_BYPASS === "1") return devUser(env);
   if (!env.AUTH_SECRET) return null;
   const jar = await cookies();
   return verifySession(jar.get(SESSION_COOKIE)?.value, env.AUTH_SECRET);

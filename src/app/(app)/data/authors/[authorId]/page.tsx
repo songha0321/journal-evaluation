@@ -13,7 +13,6 @@ import {
 import { cohortLabel } from "@/lib/format";
 
 import { getCurrentUser, isAdmin } from "@/lib/auth";
-import { Locked } from "@/components/ui/Locked";
 
 export const dynamic = "force-dynamic";
 
@@ -22,16 +21,27 @@ export default async function AuthorDetailPage({
 }: {
   params: Promise<{ authorId: string }>;
 }) {
-  if (!isAdmin(await getCurrentUser())) return <Locked title="작성자" />;
+  // 편집자도 열람 가능. 용역비는 관리자에게만 보인다 (QA R6-02)
+  const admin = isAdmin(await getCurrentUser());
   const { authorId } = await params;
-  const author = await getAuthor(authorId);
-  if (!author) notFound();
+  const rawAuthor = await getAuthor(authorId);
+  if (!rawAuthor) notFound();
+  // 편집자에게는 작성자 행의 용역비도 페이로드에 싣지 않는다 (QA R6-02)
+  const author = admin ? rawAuthor : { ...rawAuthor, scholarship_amount: 0 };
 
-  const [qna, evaluations, submissions] = await Promise.all([
+  const [qna, allEvaluations, submissions] = await Promise.all([
     getAuthorQna(authorId),
     getAuthorEvaluations(authorId),
     getAuthorSubmissions(authorId),
   ]);
+  // 편집자에게는 용역비 금액과 "용역비 등급 …" 요약을 페이로드에서부터 뺀다 (QA R6-02)
+  const evaluations = admin
+    ? allEvaluations
+    : allEvaluations.map((e) => ({
+        ...e,
+        scholarship_amount: 0,
+        evaluation_summary: e.evaluation_summary?.includes("용역비") ? null : e.evaluation_summary,
+      }));
 
   return (
     <>
@@ -94,7 +104,7 @@ export default async function AuthorDetailPage({
             ) : null}
 
             <div className="section-title">평가</div>
-            <EvaluationPanel evaluations={evaluations} />
+            <EvaluationPanel evaluations={evaluations} showFee={admin} />
           </div>
         </div>
       </div>

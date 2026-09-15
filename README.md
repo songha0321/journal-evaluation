@@ -40,7 +40,7 @@ npx wrangler d1 execute sdij-journal --remote --file migrations/0013_app_users.s
    npx wrangler d1 execute sdij-journal --remote --command \
      "INSERT INTO app_users (email, name, role) VALUES ('someone@example.com', '이름', '편집자')"
    ```
-   역할: `관리자`(전체) · `편집자`(원고 관리 + 수기 DB, 기본값). 차단은 `is_active = 0`. 관리자는 `/admin/users` 화면에서 계정 추가·역할 변경·차단을 할 수 있다(GCP 테스트 사용자 등록은 별도).
+   역할: `관리자`(전체) · `편집자`(원고 관리 + 수기 DB + 작성자 DB, 용역비 제외, 기본값). 로컬에서 편집자 화면을 보려면 `AUTH_DEV_ROLE=편집자 npm run dev`. 차단은 `is_active = 0`. 관리자는 `/admin/users` 화면에서 계정 추가·역할 변경·차단을 할 수 있다(GCP 테스트 사용자 등록은 별도).
 
 `AUTH_DEV_BYPASS`는 로컬 `.dev.vars` 전용이다. 프로덕션 secret에 넣지 않는다.
 

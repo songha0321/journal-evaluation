@@ -322,7 +322,7 @@ export function TocInputEditor({ issueId, initial }: { issueId: string; initial:
             </span>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "90px 90px 1fr 120px", gap: 10, marginBottom: 4 }}>
+          <div className="toc-field-row">
             <label className="field" style={{ marginBottom: 8 }}>
               <span className="flabel">
                 Part<span className="req">*</span>

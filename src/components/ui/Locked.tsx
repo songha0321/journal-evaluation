@@ -15,7 +15,7 @@ export function Locked({ title }: { title: string }) {
           <Icon as={Lock} size="lg" />
           <div>
             <b>잠겨 있습니다</b>
-            <p className="muted">편집자 계정은 원고 관리와 수기 DB만 쓸 수 있습니다. 권한이 필요하면 관리자에게 요청하세요.</p>
+            <p className="muted">편집자 계정은 원고 관리, 수기 DB, 작성자 DB만 쓸 수 있습니다. 권한이 필요하면 관리자에게 요청하세요.</p>
             <Link href="/ax" className="tbl-link">
               원고 대시보드로
             </Link>
