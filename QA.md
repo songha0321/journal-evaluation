@@ -11,7 +11,7 @@
 | 브랜치 | `mvp` (main 미병합) |
 | 로컬 | `npm run dev` → http://localhost:3000/ax — 로컬 D1(`.wrangler/state`)에 프로덕션 스냅샷(2026-09-14, 12테이블) 적재됨. 갱신은 원격 SELECT 덤프 → sqlite3 적재(export API는 토큰 권한 없음) |
 | 배포 | `npm run deploy` (= opennextjs-cloudflare build + deploy). 빌드가 stale하면 `rm -rf .wrangler/state` |
-| 최종 갱신 | 2026-09-14 (5회차 — 원문 비교·댓글) |
+| 최종 갱신 | 2026-09-15 (6회차 — 편집자 작성자 DB, 모바일 BNB, 사이드바 고정) |
 
 ## 표기 규칙
 
@@ -108,7 +108,7 @@ FE를 고친 회차는 아래를 매번 다시 본다.
 
 ## 실행 기록
 
-### 6회차 — 2026-09-15 편집자 작성자 DB 권한 + 모바일 최적화 (미커밋)
+### 6회차 — 2026-09-15 편집자 작성자 DB 권한 + 모바일 최적화(BNB) + 사이드바 고정 (커밋 `ebdbf22`, 배포 Version `339b01fd`)
 
 컨펌된 2항목. 모바일은 `@media (max-width: 767px)` 안에서만 고쳐 데스크톱 화면은 바꾸지 않는다.
 
